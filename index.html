@@ -44,6 +44,12 @@ button{font-family:inherit}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40;display:none}
 .overlay.show{display:block}
 
+/* sub-pestañas (contabilidad) */
+.tabs-sub{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;border-bottom:2px solid var(--line);padding-bottom:0}
+.tab-sub{background:none;border:none;border-bottom:3px solid transparent;padding:10px 16px;cursor:pointer;font:inherit;font-weight:600;color:var(--muted);border-radius:0;transition:.15s}
+.tab-sub:hover{color:var(--dark)}
+.tab-sub.act{color:var(--terra);border-bottom-color:var(--terra)}
+
 /* ====== SIDEBAR ====== */
 .brand{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
 .brand .logo{font-size:22px;font-weight:800;letter-spacing:3px;color:#fff}
@@ -130,6 +136,8 @@ input[type="date"],input[type="month"]{color:var(--dark)}
 .tabla tbody tr:hover{background:#FCF9F4}
 .tabla td b{color:var(--terra-d)}
 .tabla tr td:first-child{font-weight:600}
+.tabla tr.tot td{background:var(--cream);border-top:2px solid var(--terra);position:sticky;bottom:0}
+.tabla tr.tot td b{color:var(--dark)}
 
 .tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
 .tag.ok{background:var(--green-l);color:#2E5C22}
@@ -493,14 +501,42 @@ input[type="date"],input[type="month"]{color:var(--dark)}
 
       <!-- ============ CONTABILIDAD ============ -->
       <section id="sec-contabilidad">
-        <div class="card">
-          <h3><span class="ic">📒</span> Libro diario · partida doble</h3>
+        <div class="tabs-sub" id="contabTabs">
+          <button class="tab-sub act" data-c="diario" onclick="setContabTab('diario')">📖 Libro Diario</button>
+          <button class="tab-sub" data-c="mayor" onclick="setContabTab('mayor')">📚 Libro Mayor</button>
+          <button class="tab-sub" data-c="balance" onclick="setContabTab('balance')">⚖️ Hoja de Balance</button>
+        </div>
+
+        <!-- ===== LIBRO DIARIO ===== -->
+        <div class="card" id="contabDiario">
+          <h3><span class="ic">📖</span> Libro diario · partida doble</h3>
           <div class="desc">Contado: Debe 101 Caja · Crédito: Debe 121 CxC · Haber 701 Ventas</div>
           <div class="filter-bar">
             <span class="lbl">Buscar:</span>
             <input id="fContab" placeholder="asiento, glosa, cuenta…" oninput="renderTContab()">
+            <span class="lbl" style="margin-left:auto">Totales: Debe <b id="totDiarioDebe" style="color:var(--green)">S/ 0</b> · Haber <b id="totDiarioHaber" style="color:var(--red)">S/ 0</b></span>
           </div>
           <div class="tabla-wrap" id="tContab"></div>
+        </div>
+
+        <!-- ===== LIBRO MAYOR ===== -->
+        <div class="card" id="contabMayor" style="display:none">
+          <h3><span class="ic">📚</span> Libro mayor · movimientos por cuenta</h3>
+          <div class="desc">Selecciona una cuenta para ver todos sus movimientos y el saldo acumulado.</div>
+          <div class="filter-bar">
+            <span class="lbl">Cuenta:</span>
+            <select id="selMayor" onchange="renderMayor()"></select>
+            <span class="lbl" style="margin-left:auto">Saldo: <b id="mayorSaldo" style="color:var(--dark)">—</b></span>
+          </div>
+          <div class="tabla-wrap" id="tMayor"></div>
+        </div>
+
+        <!-- ===== HOJA DE BALANCE (Sumas y saldos) ===== -->
+        <div class="card" id="contabBalance" style="display:none">
+          <h3><span class="ic">⚖️</span> Hoja de trabajo · balance de sumas y saldos</h3>
+          <div class="desc">Estado al <b id="balFecha">—</b>. Totales deben cuadrar: Debe = Haber.</div>
+          <div class="tabla-wrap" id="tBalance"></div>
+          <div id="balResumen" class="preview" style="margin-top:12px"></div>
         </div>
       </section>
 
@@ -653,12 +689,22 @@ async function api(accion, extra){
   catch(e){ throw new Error('La API no respondió JSON. Revisa la URL (debe terminar en /exec) y que esté publicada como "Cualquier persona".'); }
   return j;
 }
+// Ejecuta una acción y, si sale bien, recarga SOLO los módulos afectados (delta).
+// extra.mods = ['ventas','contabilidad',...]  (lista de módulos a refrescar)
+// Si extra.mods es false explícito → no recarga nada.
 async function accion(accion, extra, refrescar){
   try {
+    var mods = (extra && extra.mods) || [];
+    if (extra) delete extra.mods; // no enviar mods como parámetro de la acción
     var j = await api(accion, extra);
     if (!j.ok){ toast(j.error||'Error desconocido', false); return null; }
     toast(j.mensaje||'Listo.', true);
-    if (refrescar !== false) await cargarDatos();
+    if (refrescar === false) return j;
+    if (mods.length){
+      await cargarDelta(mods);
+    } else {
+      await cargarDatos(); // fallback: recarga completa
+    }
     return j;
   } catch(e){ toast(e.message, false); return null; }
 }
@@ -671,6 +717,20 @@ async function cargarDatos(){
   } catch(e){
     setEstado(false, 'sin conexión');
     toast('No se pudo leer tu Drive: '+e.message, false);
+  }
+}
+// Recarga solo los módulos indicados y re-renderiza la vista activa.
+async function cargarDelta(mods){
+  try {
+    var d = await api('delta', { mods: mods.join(',') });
+    if (!d.ok) throw new Error(d.error);
+    mods.forEach(function(m){ if (d[m]!==undefined) DATA[m]=d[m]; });
+    if (d.hoy) DATA.hoy=d.hoy;
+    setEstado(true, 'conectado a Drive');
+    render();
+  } catch(e){
+    setEstado(false, 'sin conexión');
+    toast('No se pudo refrescar: '+e.message, false);
   }
 }
 async function guardarConexion(){
@@ -725,7 +785,26 @@ function mostrar(v){
   document.querySelectorAll('main.content section').forEach(function(s){ s.classList.remove('act'); });
   var sec=$('sec-'+v);
   if (sec) sec.classList.add('act');
+  // RENDER PEREZOSO: solo la pestaña visible
+  renderVista(v);
   window.scrollTo(0,0);
+}
+// Render individual por vista — evita renderizar las 8 pestañas siempre
+var RENDERED={}; // marca qué pestaña ya está renderizada con datos actuales
+function renderVista(v){
+  if (!DATA) return;
+  switch(v){
+    case 'resumen':     renderResumen(); break;
+    case 'ventas':      renderVentas(); break;
+    case 'almacen':     renderAlmacen(); break;
+    case 'produccion':  renderProduccion(); break;
+    case 'transporte':  renderTransporte(); break;
+    case 'rrhh':        renderRrhh(); break;
+    case 'caja':        renderCaja(); break;
+    case 'contabilidad':renderContab(); break;
+    case 'config':      renderConfigExtra(); break;
+  }
+  RENDERED[v]=true;
 }
 function toggleSidebar(force){
   var sb=$('sidebar'), ov=$('overlay');
@@ -772,19 +851,14 @@ function kpiData(){
 }
 
 /* ================================================================
-   RENDER PRINCIPAL
+   RENDER PRINCIPAL — perezoso: solo la vista activa + resumen
    ================================================================ */
 function render(){
+  if (!DATA) return;
+  // El resumen alimenta los badges del menú, así que siempre se renderiza
   renderResumen();
-  renderVentas();
-  renderAlmacen();
-  renderProduccion();
-  renderTransporte();
-  renderRrhh();
-  renderCaja();
-  renderContab();
-  renderConfigExtra();
-  // refrescar badges del menú
+  RENDERED={ resumen:true };
+  // refrescar nav (badges) + render de la vista activa
   mostrar(VISTA);
 }
 
@@ -990,14 +1064,64 @@ function renderCaja(){
 }
 
 /* ---- CONTABILIDAD ---- */
-function renderContab(){ renderTContab(); }
+function renderContab(){
+  // poblar selector de cuentas para el Libro Mayor
+  var cuentas=cuentasContab();
+  var sel=$('selMayor');
+  if (sel){
+    var prev=sel.value;
+    sel.innerHTML=cuentas.map(function(c){ return '<option value="'+esc(c.codigo)+'">'+esc(c.codigo)+' — '+esc(c.nombre)+'</option>'; }).join('');
+    if (prev && cuentas.some(function(c){return c.codigo===prev;})) sel.value=prev;
+  }
+  renderTContab();
+  renderMayor();
+  renderBalance();
+}
+function cuentasContab(){
+  var m={};
+  (DATA.contabilidad||[]).forEach(function(a){
+    var cod=s2(a[2]), nom=s2(a[3]);
+    if (cod && !m[cod]) m[cod]={codigo:cod, nombre:nom};
+  });
+  return Object.keys(m).sort().map(function(k){ return m[k]; });
+}
+// Plan de cuentas básico (códigos del nuevo Excel de contabilidad)
+function planCuentas(){
+  return {
+    '101':'Caja',       '102':'Bancos',     '121':'Cuentas por Cobrar',
+    '141':'Mercaderías','142':'Materias Primas', '151':'Maquinaria y Equipo',
+    '161':'Muebles y Enseres',
+    '401':'IGV',        '403':'Remuneraciones por Pagar',
+    '501':'Capital Social',
+    '601':'Compras',    '611':'Mano de Obra Directa', '621':'Gastos de Ventas', '631':'Gastos Administrativos', '641':'Costo de Ventas',
+    '701':'Ventas'
+  };
+}
+function tipoCuenta(cod){
+  var c=String(cod);
+  if (/^1[0-2]/.test(c)) return 'activo';
+  if (/^14/.test(c)) return 'activo';
+  if (/^15/.test(c)) return 'activo';
+  if (/^16/.test(c)) return 'activo';
+  if (/^4/.test(c)) return 'pasivo';
+  if (/^5/.test(c)) return 'patrimonio';
+  if (/^6/.test(c)) return 'gasto';
+  if (/^7/.test(c)) return 'ingreso';
+  return 'otro';
+}
+function setContabTab(t){
+  ['diario','mayor','balance'].forEach(function(k){ $('contab'+k.charAt(0).toUpperCase()+k.slice(1)).style.display = (k===t?'block':'none'); });
+  document.querySelectorAll('#contabTabs .tab-sub').forEach(function(b){ b.classList.toggle('act', b.dataset.c===t); });
+}
 function renderTContab(){
   var q=($('fContab').value||'').toLowerCase().trim();
   var todos=(DATA.contabilidad||[]).slice().reverse();
   if (q) todos=todos.filter(function(a){
     return (s2(a[0])+' '+s2(a[2])+' '+s2(a[3])+' '+s2(a[4])+' '+s2(a[8])).toLowerCase().indexOf(q)>=0;
   });
-  var filas=todos.slice(0,200).map(function(a){
+  var totDebe=0, totHaber=0;
+  todos.forEach(function(a){ totDebe+=fnum(a[5]); totHaber+=fnum(a[6]); });
+  var filas=todos.slice(0,300).map(function(a){
     return '<tr><td><b>'+esc(a[0])+'</b></td><td>'+esc(a[1])+'</td><td>'+esc(a[2])+'</td><td>'+esc(a[3])+'</td><td>'+esc(a[4])+'</td>'
       +'<td class="num">'+(fnum(a[5])?n2(a[5]):'')+'</td><td class="num">'+(fnum(a[6])?n2(a[6]):'')+'</td>'
       +'<td><span class="tag '+(s2(a[7])==='Contado'?'ok':'bad')+'">'+esc(a[7])+'</span></td><td>'+esc(a[8])+'</td></tr>';
@@ -1005,6 +1129,75 @@ function renderTContab(){
   $('tContab').innerHTML=filas
     ? '<table class="tabla"><tr><th>Asiento</th><th>Fecha</th><th>Cta</th><th>Nombre</th><th>Glosa</th><th class="num">Debe</th><th class="num">Haber</th><th>Cond</th><th>Ref</th></tr>'+filas+'</table>'
     : '<div class="empty"><span class="ic">📒</span>Libro vacío.</div>';
+  $('totDiarioDebe').textContent=n2(totDebe);
+  $('totDiarioHaber').textContent=n2(totHaber);
+}
+/* ===== LIBRO MAYOR ===== */
+function renderMayor(){
+  var sel=$('selMayor'); if (!sel) return;
+  var cod=sel.value;
+  var plan=planCuentas();
+  var movs=(DATA.contabilidad||[]).filter(function(a){ return s2(a[2])===cod; });
+  var saldo=0;
+  var filas=movs.map(function(a){
+    var d=fnum(a[5]), h=fnum(a[6]);
+    saldo += (d - h);
+    return '<tr><td>'+esc(a[1])+'</td><td><b>'+esc(a[0])+'</b></td><td>'+esc(a[4])+'</td>'
+      +'<td class="num">'+(d?n2(d):'')+'</td><td class="num">'+(h?n2(h):'')+'</td>'
+      +'<td class="num"><b>'+n2(Math.abs(saldo))+'</b> '+(saldo>=0?'D':'H')+'</td>'
+      +'<td>'+esc(a[8])+'</td></tr>';
+  }).join('');
+  $('tMayor').innerHTML=filas
+    ? '<table class="tabla"><tr><th>Fecha</th><th>Asiento</th><th>Glosa</th><th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th><th>Ref</th></tr>'+filas+'</table>'
+    : '<div class="empty"><span class="ic">📭</span>Sin movimientos en esta cuenta.</div>';
+  var nom=plan[cod]||'—';
+  var tipo=tipoCuenta(cod);
+  $('mayorSaldo').textContent=n2(Math.abs(saldo))+' '+(saldo>=0?'(Deudor)':'(Acreedor)');
+  $('mayorSaldo').style.color = (tipo==='activo'||tipo==='gasto') ? (saldo>=0?'var(--green)':'var(--red)') : (saldo>=0?'var(--red)':'var(--green)');
+}
+/* ===== HOJA DE BALANCE (sumas y saldos) ===== */
+function renderBalance(){
+  var plan=planCuentas();
+  var m={};
+  (DATA.contabilidad||[]).forEach(function(a){
+    var cod=s2(a[2]); if (!cod) return;
+    if (!m[cod]) m[cod]={codigo:cod, nombre:plan[cod]||s2(a[3]), debe:0, haber:0};
+    m[cod].debe  += fnum(a[5]);
+    m[cod].haber += fnum(a[6]);
+  });
+  var arr=Object.keys(m).map(function(k){ var x=m[k]; x.saldo=x.debe-x.haber; x.tipo=tipoCuenta(k); return x; });
+  arr.sort(function(a,b){ return a.codigo<b.codigo?-1:1; });
+  var totDebe=0, totHaber=0, totSaldoD=0, totSaldoH=0;
+  arr.forEach(function(x){ totDebe+=x.debe; totHaber+=x.haber; if (x.saldo>0) totSaldoD+=x.saldo; else totSaldoH+=-x.saldo; });
+  var filas=arr.map(function(x){
+    return '<tr><td><b>'+esc(x.codigo)+'</b></td><td>'+esc(x.nombre)+'</td>'
+      +'<td class="num">'+n2(x.debe)+'</td><td class="num">'+n2(x.haber)+'</td>'
+      +'<td class="num">'+(x.saldo>0?n2(x.saldo):'')+'</td><td class="num">'+(x.saldo<0?n2(-x.saldo):'')+'</td>'
+      +'<td><span class="tag">'+esc(x.tipo)+'</span></td></tr>';
+  }).join('');
+  $('tBalance').innerHTML=filas
+    ? '<table class="tabla"><tr><th>Cuenta</th><th>Nombre</th><th class="num">Suma Debe</th><th class="num">Suma Haber</th><th class="num">Saldo Deudor</th><th class="num">Saldo Acreedor</th><th>Tipo</th></tr>'+filas
+      +'<tr class="tot"><td colspan="2"><b>TOTALES</b></td><td class="num"><b>'+n2(totDebe)+'</b></td><td class="num"><b>'+n2(totHaber)+'</b></td><td class="num"><b>'+n2(totSaldoD)+'</b></td><td class="num"><b>'+n2(totSaldoH)+'</b></td><td></td></tr></table>'
+    : '<div class="empty"><span class="ic">⚖️</span>No hay asientos para armar el balance.</div>';
+  $('balFecha').textContent = DATA.hoy || hoyStr();
+  // Estado de resultado (ingresos - gastos)
+  var ing=0, gas=0, act=0, pas=0, pat=0;
+  arr.forEach(function(x){
+    if (x.tipo==='ingreso') ing += -x.saldo;       // las ventas acreditan → saldo acreedor
+    if (x.tipo==='gasto')   gas += x.saldo;        // los gastos debitan → saldo deudor
+    if (x.tipo==='activo')  act += x.saldo;
+    if (x.tipo==='pasivo')  pas += -x.saldo;
+    if (x.tipo==='patrimonio') pat += -x.saldo;
+  });
+  var ut = ing - gas;
+  $('balResumen').innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'
+    +'<div class="kpi"><div class="t">Total Activo</div><div class="v green">'+n2(act)+'</div></div>'
+    +'<div class="kpi"><div class="t">Total Pasivo</div><div class="v red">'+n2(pas)+'</div></div>'
+    +'<div class="kpi"><div class="t">Patrimonio</div><div class="v dark">'+n2(pat)+'</div></div>'
+    +'<div class="kpi"><div class="t">Utilidad del período</div><div class="v '+(ut>=0?'green':'red')+'">'+n2(ut)+'</div></div>'
+    +'</div>'
+    +'<div style="margin-top:10px;font-size:13px;color:var(--muted)">Cuadre: Activo ('+n2(act)+') = Pasivo ('+n2(pas)+') + Patrimonio ('+n2(pat)+') + Utilidad ('+n2(ut)+') · Diferencia: <b>'+n2(act-pas-pat-ut)+'</b></div>';
 }
 
 /* ---- CONFIG extra ---- */
@@ -1033,13 +1226,13 @@ function renderConfigExtra(){
 async function hacerVenta(){
   var cod=$('vCod').value, cant=fnum($('vCant').value);
   if (!cod || cant<=0){ toast('Elige prenda y cantidad válidas.', false); return; }
-  var r=await accion('venta',{codigo:cod,cantidad:cant,canal:$('vCanal').value,condicion:$('vCond').value,cliente:$('vCliente').value,fecha:$('vFecha').value});
+  var r=await accion('venta',{codigo:cod,cantidad:cant,canal:$('vCanal').value,condicion:$('vCond').value,cliente:$('vCliente').value,fecha:$('vFecha').value,mods:['ventas','kardex','contabilidad','caja','productos','bitacora']});
   if (r){ $('vCant').value=1; $('vCliente').value='Mostrador'; previewVenta(); }
 }
 async function hacerVentaRapida(){
   var cod=$('mVCod').value, cant=fnum($('mVCant').value);
   if (!cod || cant<=0){ toast('Elige prenda y cantidad.', false); return; }
-  var r=await accion('venta',{codigo:cod,cantidad:cant,canal:$('mVCanal').value,condicion:$('mVCond').value,cliente:$('mVCliente').value,fecha:$('mVFecha').value});
+  var r=await accion('venta',{codigo:cod,cantidad:cant,canal:$('mVCanal').value,condicion:$('mVCond').value,cliente:$('mVCliente').value,fecha:$('mVFecha').value,mods:['ventas','kardex','contabilidad','caja','productos','bitacora']});
   if (r){ cerrarModal('modalVenta'); }
 }
 function previewMVenta(){
@@ -1053,21 +1246,21 @@ function previewMVenta(){
 async function hacerCobranza(){
   var ref=$('cRef').value;
   if (!ref){ toast('No hay ventas al crédito pendientes.', false); return; }
-  await accion('cobranza',{ref:ref});
+  await accion('cobranza',{ref:ref,mods:['contabilidad','caja','bitacora']});
 }
 async function hacerKardex(tipo){
   var cod=$('kCod').value, cant=fnum($('kCant').value);
   if (!cod || cant<=0){ toast('Elige código y cantidad.', false); return; }
-  await accion('kardex',{tipo:tipo,codigo:cod,cantidad:cant,doc:$('kDoc').value,obs:$('kObs').value});
+  await accion('kardex',{tipo:tipo,codigo:cod,cantidad:cant,doc:$('kDoc').value,obs:$('kObs').value,mods:['kardex','productos','fibras','bitacora']});
 }
 async function hacerLote(){
   var cod=$('pCod').value; if (!cod) return;
-  await accion('lote',{codigo:cod,fibra:fnum($('pFibra').value),hilo:fnum($('pHilo').value),horas:fnum($('pHoras').value),prendas:fnum($('pPrendas').value)});
+  await accion('lote',{codigo:cod,fibra:fnum($('pFibra').value),hilo:fnum($('pHilo').value),horas:fnum($('pHoras').value),prendas:fnum($('pPrendas').value),mods:['produccion','kardex','bitacora']});
 }
 async function hacerLoteAlmacen(){
   var lote=$('pLote').value;
   if (!lote){ toast('No hay lotes EN PLANTA.', false); return; }
-  await accion('lote_almacen',{lote:lote});
+  await accion('lote_almacen',{lote:lote,mods:['produccion','kardex','productos','bitacora']});
 }
 async function calcFlete(){
   var dest=$('tDest').value, peso=fnum($('tPeso').value);
@@ -1081,29 +1274,29 @@ async function calcFlete(){
 async function hacerGuia(){
   var dest=$('tDest').value, peso=fnum($('tPeso').value);
   if (!dest || !(peso>0)){ toast('Elige destino y peso.', false); return; }
-  await accion('guia',{destino:dest,peso:peso,fecha:$('tFecha').value||hoyStr()});
+  await accion('guia',{destino:dest,peso:peso,fecha:$('tFecha').value||hoyStr(),mods:['transporte','bitacora']});
 }
 async function hacerEntregada(){
   var g=$('tGuia').value;
   if (!g){ toast('No hay guías EN RUTA.', false); return; }
-  await accion('guia_entregada',{guia:g});
+  await accion('guia_entregada',{guia:g,mods:['transporte','bitacora']});
 }
 async function hacerAlta(){
   var nombre=$('eNombre').value.trim();
   if (!nombre){ toast('Escribe el nombre.', false); return; }
-  var r=await accion('empleado_alta',{nombre:nombre,dni:$('eDni').value,cargo:$('eCargo').value,area:$('eArea').value,sueldo:fnum($('eSueldo').value)});
+  var r=await accion('empleado_alta',{nombre:nombre,dni:$('eDni').value,cargo:$('eCargo').value,area:$('eArea').value,sueldo:fnum($('eSueldo').value),mods:['rrhh','bitacora']});
   if (r){ $('eNombre').value=''; $('eDni').value=''; $('eCargo').value=''; }
 }
 async function hacerBaja(){
   var cod=$('eSel').value;
   if (!cod){ toast('No hay empleados activos.', false); return; }
   if (!confirm('¿Dar de baja a '+cod+'? Queda INACTIVO.')) return;
-  await accion('empleado_baja',{codigo:cod});
+  await accion('empleado_baja',{codigo:cod,mods:['rrhh','bitacora']});
 }
 async function hacerEditar(){
   var cod=$('eSel').value;
   if (!cod){ toast('No hay empleados activos.', false); return; }
-  var extra={codigo:cod};
+  var extra={codigo:cod,mods:['rrhh','bitacora']};
   if ($('eCargoN').value.trim()) extra.cargo=$('eCargoN').value.trim();
   if (fnum($('eSueldoN').value)>0) extra.sueldo=fnum($('eSueldoN').value);
   await accion('empleado_editar',extra);
@@ -1112,23 +1305,23 @@ async function hacerEditar(){
 async function hacerAsistencia(){
   var mes=$('aMes').value, cod=$('aCod').value;
   if (!mes || !cod){ toast('Elige mes y empleado.', false); return; }
-  await accion('asistencia',{mes:mes,codigo:cod,dias:fnum($('aDias').value),faltas:fnum($('aFaltas').value),tardanzas:fnum($('aTard').value),hExtra:fnum($('aHEx').value)});
+  await accion('asistencia',{mes:mes,codigo:cod,dias:fnum($('aDias').value),faltas:fnum($('aFaltas').value),tardanzas:fnum($('aTard').value),hExtra:fnum($('aHEx').value),mods:['asistencia','bitacora']});
 }
 async function hacerPlanilla(){
   var mes=$('plMes').value;
   if (!mes){ toast('Elige el mes.', false); return; }
-  await accion('planilla',{mes:mes});
+  await accion('planilla',{mes:mes,mods:['planilla','bitacora']});
 }
-async function hacerCierre(){ await accion('cierre',{egresos:fnum($('cEgre').value)}); }
+async function hacerCierre(){ await accion('cierre',{egresos:fnum($('cEgre').value),mods:['caja','bitacora']}); }
 async function hacerMeta(){
   var m=fnum($('cfgMeta').value);
   if (!(m>0)){ toast('Escribe una meta válida.', false); return; }
-  await accion('meta',{meta:m});
+  await accion('meta',{meta:m,mods:['config']});
 }
 async function hacerProductoNuevo(){
   var cod=$('nPCod').value.trim().toUpperCase(), nom=$('nPNom').value.trim();
   if (!cod || !nom){ toast('Código y nombre son obligatorios.', false); return; }
-  var r=await accion('producto_agregar',{codigo:cod,nombre:nom,unidad:$('nPUnd').value,stockInicial:fnum($('nPIni').value),stockMinimo:fnum($('nPMin').value),costo:fnum($('nPCosto').value),precio:fnum($('nPPrecio').value)});
+  var r=await accion('producto_agregar',{codigo:cod,nombre:nom,unidad:$('nPUnd').value,stockInicial:fnum($('nPIni').value),stockMinimo:fnum($('nPMin').value),costo:fnum($('nPCosto').value),precio:fnum($('nPPrecio').value),mods:['productos','kardex','bitacora']});
   if (r){ cerrarModal('modalProd'); $('nPCod').value=''; $('nPNom').value=''; $('nPPrecio').value='0'; $('nPCosto').value='0'; }
 }
 async function recargar(){ await cargarDatos(); }
