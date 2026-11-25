@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NATSUYARI · Sistema de Gestión</title>
+<style>
+:root{
+  --dark:#2A2622; --dark2:#3A332C; --terra:#B4552D; --terra-d:#8F3E1E; --terra-l:#D17B4F;
+  --gold:#C9A227; --gold-l:#E6C75A;
+  --green:#4B8B3B; --green-l:#E6F2E2;
+  --red:#C0392B; --red-l:#F8E3E0;
+  --cream:#FAF6F0; --paper:#FFFFFF;
+  --line:#E5DCCF; --line2:#D4C8B5;
+  --muted:#7A6E5F; --muted2:#A39989;
+  --ruta-l:#FDF3D8; --ruta-d:#9A7B0F;
+  --shadow:0 1px 3px rgba(42,38,34,.08), 0 1px 2px rgba(42,38,34,.04);
+  --shadow-md:0 4px 12px rgba(42,38,34,.10);
+  --shadow-lg:0 12px 32px rgba(42,38,34,.16);
+  --radius:14px; --radius-sm:10px;
+  --font:'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);background:var(--cream);color:var(--dark);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+
+/* ====== LAYOUT ====== */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.sidebar{background:var(--dark);color:#fff;padding:0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;box-shadow:var(--shadow-md);z-index:30}
+.main{display:flex;flex-direction:column;min-width:0}
+
+/* ====== SIDEBAR ====== */
+.brand{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand .logo{font-size:22px;font-weight:800;letter-spacing:3px;color:#fff}
+.brand .logo span{color:var(--gold)}
+.brand .sub{font-size:10.5px;color:#A39989;margin-top:3px;letter-spacing:.3px}
+.brand .badge{display:inline-block;margin-top:8px;font-size:10px;background:rgba(201,162,39,.18);color:var(--gold-l);padding:2px 8px;border-radius:20px;font-weight:600;letter-spacing:.5px}
+
+.nav{flex:1;padding:14px 10px;overflow-y:auto}
+.nav .nav-title{font-size:10px;color:#A39989;text-transform:uppercase;letter-spacing:1.2px;padding:10px 12px 6px;font-weight:700}
+.nav button{display:flex;align-items:center;gap:11px;width:100%;border:none;background:transparent;color:#CBBFB0;
+  padding:11px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:13.5px;font-weight:600;text-align:left;transition:.15s;margin-bottom:2px}
+.nav button:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav button.act{background:linear-gradient(90deg,var(--terra),var(--terra-d));color:#fff;box-shadow:0 2px 8px rgba(180,85,45,.4)}
+.nav button .ico{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.nav button .pill{margin-left:auto;font-size:10px;background:var(--red);color:#fff;padding:1px 6px;border-radius:10px;font-weight:700}
+.nav button.act .pill{background:rgba(255,255,255,.25)}
+
+.side-foot{padding:12px 14px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#A39989}
+.side-foot .row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.side-foot .punto{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0}
+.side-foot.on .punto{background:var(--green);box-shadow:0 0 6px var(--green)}
+
+/* ====== TOPBAR ====== */
+.topbar{background:var(--paper);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:20;box-shadow:var(--shadow)}
+.topbar h1{font-size:18px;font-weight:800;color:var(--dark);margin:0}
+.topbar .crumb{font-size:12px;color:var(--muted);font-weight:500}
+.topbar .spacer{flex:1}
+.topbar .btn-mini{background:var(--cream);border:1px solid var(--line);color:var(--dark);padding:7px 13px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:6px}
+.topbar .btn-mini:hover{background:var(--line);border-color:var(--line2)}
+.topbar .btn-mini.prim{background:var(--terra);color:#fff;border-color:var(--terra)}
+.topbar .btn-mini.prim:hover{background:var(--terra-d)}
+.hamb{display:none;background:transparent;border:none;font-size:22px;color:var(--dark);cursor:pointer;padding:4px 8px}
+
+/* ====== CONTENT ====== */
+.content{padding:24px;max-width:1400px;width:100%;margin:0 auto}
+section{display:none;animation:fade .2s ease}
+section.act{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ====== KPIs ====== */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:.2s}
+.kpi:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--terra)}
+.kpi.green::before{background:var(--green)} .kpi.red::before{background:var(--red)} .kpi.gold::before{background:var(--gold)} .kpi.dark::before{background:var(--dark2)}
+.kpi .t{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700}
+.kpi .v{font-size:24px;font-weight:800;margin-top:6px;color:var(--dark);line-height:1.1}
+.kpi .v.ok{color:var(--green)} .kpi .v.bad{color:var(--red)} .kpi .v.warn{color:var(--ruta-d)}
+.kpi .s{font-size:11px;color:var(--muted2);margin-top:4px}
+
+/* ====== CARDS ====== */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:18px;box-shadow:var(--shadow)}
+.card h3{font-size:14px;font-weight:800;color:var(--dark);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.card h3 .ic{color:var(--terra)}
+.card .desc{font-size:12px;color:var(--muted);margin-bottom:14px}
+.card .desc.warn{color:var(--ruta-d);background:var(--ruta-l);padding:8px 12px;border-radius:8px;display:inline-block}
+
+/* ====== FORM ====== */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+label{display:block;font-size:11.5px;color:var(--muted);margin:0 0 5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+input,select,textarea{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;font-size:14px;background:#fff;color:var(--dark);transition:.15s;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--terra);box-shadow:0 0 0 3px rgba(180,85,45,.12)}
+input[type="date"],input[type="month"]{color:var(--dark)}
+.field-actions{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+/* ====== BUTTONS ====== */
+.btn{border:none;border-radius:10px;padding:10px 18px;cursor:pointer;font-weight:700;font-size:13.5px;background:var(--terra);color:#fff;transition:.15s;display:inline-flex;align-items:center;gap:7px;box-shadow:0 1px 3px rgba(180,85,45,.3)}
+.btn:hover{background:var(--terra-d);transform:translateY(-1px);box-shadow:0 3px 8px rgba(180,85,45,.4)}
+.btn:active{transform:translateY(0)}
+.btn.sec{background:var(--dark2);box-shadow:0 1px 3px rgba(0,0,0,.2)} .btn.sec:hover{background:var(--dark)}
+.btn.grn{background:var(--green);box-shadow:0 1px 3px rgba(75,139,59,.3)} .btn.grn:hover{background:#3A6B2D}
+.btn.gld{background:var(--gold);color:var(--dark);box-shadow:0 1px 3px rgba(201,162,39,.3)} .btn.gld:hover{background:#B08A1E;color:#fff}
+.btn.gh{background:transparent;color:var(--terra);border:1.5px solid var(--terra);box-shadow:none} .btn.gh:hover{background:var(--terra);color:#fff}
+.btn.sm{padding:6px 12px;font-size:12px;border-radius:8px}
+.btn.block{display:flex;justify-content:center;width:100%}
+
+/* ====== TABLE ====== */
+.tabla-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--line);background:#fff}
+.tabla{width:100%;border-collapse:collapse;font-size:12.5px;min-width:600px}
+.tabla th{background:var(--dark);color:#fff;padding:10px 12px;text-align:left;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;position:sticky;top:0}
+.tabla th.num,.tabla td.num{text-align:right}
+.tabla td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tabla tr:last-child td{border-bottom:none}
+.tabla tbody tr:hover{background:#FCF9F4}
+.tabla td b{color:var(--terra-d)}
+.tabla tr td:first-child{font-weight:600}
+
+.tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.tag.ok{background:var(--green-l);color:#2E5C22}
+.tag.bad{background:var(--red-l);color:#8E2A20}
+.tag.ruta{background:var(--ruta-l);color:var(--ruta-d)}
+.tag.dark{background:#EFE7DA;color:var(--dark)}
+.tag.gold{background:#FAF1D2;color:#7A5E0F}
+
+/* ====== ALERT ====== */
+.alerta{padding:12px 16px;border-radius:10px;margin-bottom:14px;font-size:13px;display:flex;align-items:flex-start;gap:10px}
+.alerta .ic{font-size:16px;flex-shrink:0}
+.alerta.err{background:var(--red-l);color:#8E2A20;border-left:4px solid var(--red)}
+.alerta.ok{background:var(--green-l);color:#2E5C22;border-left:4px solid var(--green)}
+.alerta.warn{background:var(--ruta-l);color:var(--ruta-d);border-left:4px solid var(--gold)}
+.alerta.info{background:#EEF2FA;color:#345;color:#345;border-left:4px solid #678}
+
+/* ====== BAR (meta) ====== */
+.bar-wrap{background:#EFE7DA;border-radius:12px;height:18px;overflow:hidden;margin-top:8px;position:relative}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--terra),var(--gold));border-radius:12px;transition:width .5s}
+.bar-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
+
+/* ====== CHARTS ====== */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.chart-grid{grid-template-columns:1fr}}
+.chart-box{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;overflow-x:auto}
+.chart-box h4{font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.svg-wrap{overflow-x:auto}
+
+/* ====== TOAST ====== */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff;padding:14px 22px;border-radius:12px;font-size:13.5px;max-width:90vw;display:none;z-index:99;box-shadow:var(--shadow-lg);opacity:0;transition:.25s;font-weight:500}
+#toast.show{display:block;opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.ok{border-left:5px solid var(--green)}
+#toast.err{border-left:5px solid var(--red)}
+#toast .ic{margin-right:8px}
+
+/* ====== MODAL ====== */
+.modal-bg{position:fixed;inset:0;background:rgba(42,38,34,.55);display:none;align-items:center;justify-content:center;z-index:80;padding:16px;backdrop-filter:blur(2px)}
+.modal-bg.show{display:flex}
+.modal{background:var(--paper);border-radius:var(--radius);max-width:560px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:pop .2s ease}
+@keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:between;gap:10px}
+.modal-head h3{flex:1;font-size:16px;font-weight:800;color:var(--dark)}
+.modal-head .close{background:transparent;border:none;font-size:24px;color:var(--muted);cursor:pointer;padding:0 4px;line-height:1}
+.modal-head .close:hover{color:var(--dark)}
+.modal-body{padding:22px}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:var(--cream);border-radius:0 0 var(--radius) var(--radius)}
+
+/* ====== CHIPS ====== */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.chip{background:var(--cream);border:1px solid var(--line);border-radius:20px;padding:5px 13px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+.chip b{color:var(--terra-d)}
+
+/* ====== FILTER BAR ====== */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filter-bar input,.filter-bar select{width:auto;min-width:160px;padding:7px 11px;font-size:12.5px}
+.filter-bar .lbl{font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+
+/* ====== EMPTY STATE ====== */
+.empty{padding:30px 20px;text-align:center;color:var(--muted);font-size:13px}
+.empty .ic{font-size:36px;display:block;margin-bottom:8px;opacity:.4}
+
+/* ====== INTRO / SETUP ====== */
+.intro{background:linear-gradient(135deg,#FFF8EC 0%,#FAF6F0 100%);border:2px dashed var(--terra);border-radius:var(--radius);padding:22px;margin-bottom:18px}
+.intro h3{color:var(--terra-d);font-size:16px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.intro ol{margin:10px 0 0 22px;font-size:13.5px;line-height:1.8;color:var(--dark)}
+.intro ol li b{color:var(--terra-d)}
+.intro .arch-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:14px}
+.intro .arch-list .a{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:8px}
+.intro .arch-list .a .n{font-weight:800;color:var(--terra-d);font-size:11px}
+.intro .arch-list .a .d{color:var(--muted)}
+
+/* ====== PREVIEW BOX ====== */
+.preview{background:var(--cream);border:1px dashed var(--line2);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--muted);margin-top:10px}
+.preview b{color:var(--terra-d)}
+
+/* ====== RESPONSIVE ====== */
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:-260px;top:0;width:240px;transition:left .25s;z-index:50}
+  .sidebar.open{left:0}
+  .hamb{display:inline-block}
+  .content{padding:16px}
+  .topbar{padding:12px 16px}
+  .topbar h1{font-size:16px}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40;display:none}
+  .overlay.show{display:block}
+}
+@media (max-width:560px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi .v{font-size:20px}
+  .form-grid{grid-template-columns:1fr}
+  .btn{width:100%;justify-content:center}
+  .field-actions{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ====== SIDEBAR ====== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">NATSU<span>YARI</span></div>
+      <div class="sub">Natsukii Yuyariy S.A.C.</div>
+      <div class="sub">Puno · Prendas de alpaca</div>
+      <div class="badge">v2 · multi-archivo</div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot" id="sideFoot">
+      <div class="row"><span class="punto"></span><span id="estadoTxt">sin conexión</span></div>
+      <div>API: <span id="apiState">—</span></div>
+    </div>
+  </aside>
+  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+  <!-- ====== MAIN ====== -->
+  <div class="main">
+    <header class="topbar">
+      <button class="hamb" onclick="toggleSidebar()">☰</button>
+      <div>
+        <h1 id="pageTitle">Resumen</h1>
+        <div class="crumb" id="pageCrumb">Panel general del negocio</div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn-mini" onclick="recargar()">↻ Refrescar</button>
+      <button class="btn-mini prim" onclick="abrirModal('modalVenta')">+ Venta rápida</button>
+    </header>
+
+    <main class="content" id="content">
+
+      <!-- ============ RESUMEN ============ -->
+      <section id="sec-resumen" class="act">
+        <div id="kpis" class="kpis"></div>
+
+        <div class="card">
+          <h3><span class="ic">🎯</span> Avance de la meta anual</h3>
+          <div class="desc">Progreso de las ventas del año frente a la meta configurada</div>
+          <div id="metaBox"></div>
+          <div class="bar-meta" id="metaNota"></div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">📉</span> Gráficos del mes</h3>
+          <div id="alertaStockBox"></div>
+          <div class="chart-grid">
+            <div class="chart-box"><h4>Ventas por producto</h4><div id="gProducto" class="svg-wrap"></div></div>
+            <div class="chart-box"><h4>Contado vs Crédito</h4><div id="gCanal" class="svg-wrap"></div></div>
+          </div>
+          <div class="chart-box" style="margin-top:14px"><h4>Ventas por día del mes</h4><div id="gDias" class="svg-wrap"></div></div>
+        </div>
+      </section>
+
+      <!-- ============ VENTAS ============ -->
+      <section id="sec-ventas">
+        <div class="card">
+          <h3><span class="ic">🛒</span> Nueva venta</h3>
+          <div class="desc">Partida doble automática · descuenta stock · registra el asiento contable</div>
+          <div class="form-grid">
+            <div><label>Prenda</label><select id="vCod" onchange="previewVenta()"></select></div>
+            <div><label>Cantidad</label><input id="vCant" type="number" min="1" step="1" value="1" oninput="previewVenta()"></div>
+            <div><label>Canal</label><select id="vCanal"><option>Local</option><option>Exportación</option></select></div>
+            <div><label>Condición</label><select id="vCond" onchange="previewVenta()"><option>Contado</option><option>Crédito</option></select></div>
+            <div><label>Cliente</label><input id="vCliente" value="Mostrador"></div>
+            <div><label>Fecha</label><input id="vFecha" type="date"></div>
+            <div class="field-actions">
+              <button class="btn" onclick="hacerVenta()">Registrar venta</button>
+            </div>
+          </div>
+          <div class="preview" id="vPreview">Selecciona prenda y cantidad.</div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">💵</span> Registrar cobranza</h3>
+          <div class="desc">Cobra una venta al crédito · asiento: Debe 101 Caja / Haber 121 CxC</div>
+          <div class="form-grid">
+            <div><label>Venta pendiente</label><select id="cRef"></select></div>
+            <div class="field-actions"><button class="btn sec" onclick="hacerCobranza()">Registrar cobranza</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">📋</span> Ventas registradas</h3>
+          <div class="filter-bar">
+            <span class="lbl">Buscar:</span>
+            <input id="fVentas" placeholder="código, cliente, N°…" oninput="renderTVentas()">
+            <select id="fVentasCond" onchange="renderTVentas()"><option value="">todas las condiciones</option><option>Contado</option><option>Crédito</option></select>
+            <select id="fVentasCanal" onchange="renderTVentas()"><option value="">todos los canales</option><option>Local</option><option>Exportación</option></select>
+          </div>
+          <div class="tabla-wrap" id="tVentas"></div>
+        </div>
+      </section>
+
+      <!-- ============ ALMACEN ============ -->
+      <section id="sec-almacen">
+        <div class="card">
+          <h3><span class="ic">📦</span> Movimiento de almacén</h3>
+          <div class="desc">Queda registrado en el KARDEX y recalcula el stock del catálogo</div>
+          <div class="form-grid">
+            <div><label>Producto o insumo</label><select id="kCod"></select></div>
+            <div><label>Cantidad</label><input id="kCant" type="number" min="1" step="1" value="1"></div>
+            <div><label>Documento</label><input id="kDoc" placeholder="OC-0005"></div>
+            <div><label>Observación</label><input id="kObs" placeholder="opcional"></div>
+            <div class="field-actions">
+              <button class="btn grn" onclick="hacerKardex('ENTRADA')">+ Entrada</button>
+              <button class="btn" onclick="hacerKardex('SALIDA')">− Salida</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">🏷️</span> Stock actual</h3>
+          <div class="desc">Catálogo de productos e insumos con su stock calculado desde el KARDEX</div>
+          <div class="filter-bar">
+            <button class="btn-mini" onclick="abrirModal('modalProd')">+ Nuevo producto</button>
+            <span class="lbl">Buscar:</span>
+            <input id="fStock" placeholder="código o nombre…" oninput="renderTStock()">
+          </div>
+          <div class="tabla-wrap" id="tStock"></div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">📜</span> KARDEX</h3>
+          <div class="desc">Historial de entradas y salidas</div>
+          <div class="tabla-wrap" id="tKardex"></div>
+        </div>
+      </section>
+
+      <!-- ============ PRODUCCION ============ -->
+      <section id="sec-produccion">
+        <div class="card">
+          <h3><span class="ic">🧵</span> Nuevo lote de producción</h3>
+          <div class="desc">Los costos se calculan con las tarifas de CONFIG · la fibra y el hilo se descuentan del stock</div>
+          <div class="form-grid">
+            <div><label>Prenda a producir</label><select id="pCod"></select></div>
+            <div><label>Fibra usada (kg)</label><input id="pFibra" type="number" min="0" step="0.5" value="10"></div>
+            <div><label>Hilo usado (kg)</label><input id="pHilo" type="number" min="0" step="0.5" value="2"></div>
+            <div><label>Horas de trabajo</label><input id="pHoras" type="number" min="0" step="0.5" value="8"></div>
+            <div><label>Prendas producidas</label><input id="pPrendas" type="number" min="1" step="1" value="10"></div>
+            <div class="field-actions"><button class="btn" onclick="hacerLote()">Registrar lote (EN PLANTA)</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">✅</span> Enviar lote a almacén</h3>
+          <div class="desc">Cambia el lote a EN ALMACEN y hace la ENTRADA de stock en el KARDEX</div>
+          <div class="form-grid">
+            <div><label>Lotes EN PLANTA</label><select id="pLote"></select></div>
+            <div class="field-actions"><button class="btn grn" onclick="hacerLoteAlmacen()">Enviar a almacén</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">📋</span> Lotes registrados</h3>
+          <div class="tabla-wrap" id="tProduccion"></div>
+        </div>
+      </section>
+
+      <!-- ============ TRANSPORTE ============ -->
+      <section id="sec-transporte">
+        <div class="card">
+          <h3><span class="ic">🚚</span> Nueva guía de remisión</h3>
+          <div class="desc">El flete se calcula con la tarifa del destino (base + peajes + kg extra)</div>
+          <div class="form-grid">
+            <div><label>Destino</label><select id="tDest"></select></div>
+            <div><label>Peso (kg)</label><input id="tPeso" type="number" min="0.1" step="0.1" value="30" oninput="previewFlete()"></div>
+            <div><label>Fecha</label><input id="tFecha" type="date"></div>
+            <div class="field-actions">
+              <button class="btn sec" onclick="calcFlete()">Calcular flete</button>
+              <button class="btn" onclick="hacerGuia()">Crear guía</button>
+            </div>
+          </div>
+          <div class="preview" id="fletePreview">Elige destino y peso.</div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">📦</span> Marcar guía entregada</h3>
+          <div class="form-grid">
+            <div><label>Guías EN RUTA</label><select id="tGuia"></select></div>
+            <div class="field-actions"><button class="btn grn" onclick="hacerEntregada()">Marcar ENTREGADA</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">📋</span> Guías de remisión</h3>
+          <div class="tabla-wrap" id="tTransporte"></div>
+        </div>
+      </section>
+
+      <!-- ============ RRHH ============ -->
+      <section id="sec-rrhh">
+        <div class="card">
+          <h3><span class="ic">👥</span> Personal</h3>
+          <div class="tabla-wrap" id="tRrhh"></div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">➕</span> Alta de empleado</h3>
+          <div class="form-grid">
+            <div><label>Nombre completo</label><input id="eNombre" placeholder="Nombre y apellidos"></div>
+            <div><label>DNI</label><input id="eDni" placeholder="opcional"></div>
+            <div><label>Cargo</label><input id="eCargo" placeholder="Vendedora"></div>
+            <div><label>Área</label><select id="eArea"><option>Ventas</option><option>Producción</option><option>Almacén</option><option>Administración</option></select></div>
+            <div><label>Sueldo mensual (S/)</label><input id="eSueldo" type="number" min="1" value="1500"></div>
+            <div class="field-actions"><button class="btn grn" onclick="hacerAlta()">Registrar alta</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">✏️</span> Editar / dar de baja</h3>
+          <div class="form-grid">
+            <div><label>Empleado</label><select id="eSel"></select></div>
+            <div><label>Nuevo cargo</label><input id="eCargoN" placeholder="vacío = sin cambio"></div>
+            <div><label>Nuevo sueldo</label><input id="eSueldoN" type="number" min="0" placeholder="vacío = sin cambio"></div>
+            <div class="field-actions">
+              <button class="btn sec" onclick="hacerEditar()">Guardar cambios</button>
+              <button class="btn" onclick="hacerBaja()">Dar de baja</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">🗓️</span> Asistencia del mes</h3>
+          <div class="form-grid">
+            <div><label>Mes</label><input id="aMes" type="month"></div>
+            <div><label>Empleado</label><select id="aCod"></select></div>
+            <div><label>Días laborados</label><input id="aDias" type="number" min="1" max="30" value="26"></div>
+            <div><label>Faltas</label><input id="aFaltas" type="number" min="0" max="30" value="0"></div>
+            <div><label>Tardanzas</label><input id="aTard" type="number" min="0" value="0"></div>
+            <div><label>Horas extra</label><input id="aHEx" type="number" min="0" value="0"></div>
+            <div class="field-actions"><button class="btn sec" onclick="hacerAsistencia()">Guardar asistencia</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">💰</span> Planilla mensual</h3>
+          <div class="desc">Descuento por faltas + AFP · la calcula el botón desde la asistencia</div>
+          <div class="form-grid">
+            <div><label>Mes a calcular</label><input id="plMes" type="month"></div>
+            <div class="field-actions"><button class="btn" onclick="hacerPlanilla()">Calcular planilla</button></div>
+          </div>
+          <div class="tabla-wrap" id="tPlanilla" style="margin-top:12px"></div>
+        </div>
+      </section>
+
+      <!-- ============ CAJA ============ -->
+      <section id="sec-caja">
+        <div class="card">
+          <h3><span class="ic">💰</span> Cierre de caja del día</h3>
+          <div class="desc">Suma ventas contado + cobranzas de HOY, resta egresos y guarda el saldo. No se duplica.</div>
+          <div class="form-grid">
+            <div><label>Egresos del día (S/)</label><input id="cEgre" type="number" min="0" step="0.01" value="0"></div>
+            <div class="field-actions"><button class="btn" onclick="hacerCierre()">Hacer cierre de caja</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3><span class="ic">📋</span> Cierres registrados</h3>
+          <div class="tabla-wrap" id="tCaja"></div>
+        </div>
+      </section>
+
+      <!-- ============ CONTABILIDAD ============ -->
+      <section id="sec-contabilidad">
+        <div class="card">
+          <h3><span class="ic">📒</span> Libro diario · partida doble</h3>
+          <div class="desc">Contado: Debe 101 Caja · Crédito: Debe 121 CxC · Haber 701 Ventas</div>
+          <div class="filter-bar">
+            <span class="lbl">Buscar:</span>
+            <input id="fContab" placeholder="asiento, glosa, cuenta…" oninput="renderTContab()">
+          </div>
+          <div class="tabla-wrap" id="tContab"></div>
+        </div>
+      </section>
+
+      <!-- ============ CONFIG ============ -->
+      <section id="sec-config">
+        <div class="card">
+          <h3><span class="ic">🔌</span> Conexión con tu Drive</h3>
+          <div class="desc">Los datos se guardan solo en este navegador (localStorage)</div>
+          <div class="form-grid">
+            <div style="grid-column:1/-1"><label>URL de la API (termina en /exec)</label><input id="cfgUrl" placeholder="https://script.google.com/macros/s/.../exec"></div>
+            <div><label>PIN (CONFIG celda C11)</label><input id="cfgPin" placeholder="1234"></div>
+            <div><label>Tu nombre</label><input id="cfgUsuario" placeholder="ej. Natsukii"></div>
+            <div class="field-actions">
+              <button class="btn grn" onclick="guardarConexion()">Probar y guardar</button>
+              <button class="btn sec" onclick="recargar()">Refrescar datos</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">🎯</span> Meta anual de ventas</h3>
+          <div class="form-grid">
+            <div><label>Meta (S/)</label><input id="cfgMeta" type="number" min="1"></div>
+            <div class="field-actions"><button class="btn" onclick="hacerMeta()">Guardar meta</button></div>
+          </div>
+          <div class="preview" id="cfgMetaNota"></div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">⚙️</span> Tarifas del sistema</h3>
+          <div class="desc">Se editan en la hoja CONFIG del archivo 01_CONFIG</div>
+          <div id="cfgTarifas" class="chips"></div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">📚</span> Estado de los archivos</h3>
+          <div class="desc">Versión de la API y fecha de datos</div>
+          <div id="cfgInfo" class="preview"></div>
+        </div>
+
+        <div class="card">
+          <h3><span class="ic">📝</span> Bitácora</h3>
+          <div class="desc">Registro automático de operaciones</div>
+          <div class="tabla-wrap" id="tBitacora"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ====== TOAST ====== -->
+<div id="toast"></div>
+
+<!-- ====== MODAL VENTA RÁPIDA ====== -->
+<div class="modal-bg" id="modalVenta">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>🛒 Nueva venta rápida</h3>
+      <button class="close" onclick="cerrarModal('modalVenta')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div><label>Prenda</label><select id="mVCod"></select></div>
+        <div><label>Cantidad</label><input id="mVCant" type="number" min="1" step="1" value="1" oninput="previewMVenta()"></div>
+        <div><label>Canal</label><select id="mVCanal"><option>Local</option><option>Exportación</option></select></div>
+        <div><label>Condición</label><select id="mVCond" onchange="previewMVenta()"><option>Contado</option><option>Crédito</option></select></div>
+        <div><label>Cliente</label><input id="mVCliente" value="Mostrador"></div>
+        <div><label>Fecha</label><input id="mVFecha" type="date"></div>
+      </div>
+      <div class="preview" id="mVPreview">Selecciona prenda y cantidad.</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn gh" onclick="cerrarModal('modalVenta')">Cancelar</button>
+      <button class="btn" onclick="hacerVentaRapida()">Registrar venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== MODAL PRODUCTO NUEVO ====== -->
+<div class="modal-bg" id="modalProd">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>🏷️ Agregar producto al catálogo</h3>
+      <button class="close" onclick="cerrarModal('modalProd')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div><label>Código</label><input id="nPCod" placeholder="CHM-RD"></div>
+        <div><label>Nombre</label><input id="nPNom" placeholder="Chompa roja"></div>
+        <div><label>Unidad</label><select id="nPUnd"><option>und</option><option>par</option><option>kg</option><option>m</option></select></div>
+        <div><label>Stock inicial</label><input id="nPIni" type="number" min="0" value="0"></div>
+        <div><label>Stock mínimo</label><input id="nPMin" type="number" min="0" value="5"></div>
+        <div><label>Costo (S/)</label><input id="nPCosto" type="number" min="0" step="0.01" value="0"></div>
+        <div><label>Precio (S/)</label><input id="nPPrecio" type="number" min="0" step="0.01" value="0"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn gh" onclick="cerrarModal('modalProd')">Cancelar</button>
+      <button class="btn grn" onclick="hacerProductoNuevo()">Agregar producto</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================================================================
+   NATSUYARI WEB v2 — multi-archivo · diseño renovado
+   Mismas acciones que la v1, HTML nuevo más intuitivo.
+   ================================================================ */
+
+var cfg = { apiurl:'', pin:'', usuario:'' };
+try { var _c = JSON.parse(localStorage.getItem('natsuyari_cfg') || '{}'); if (_c.apiurl) cfg = _c; } catch(e){}
+
+var DATA = null;
+var VISTA = 'resumen';
+var HOY = new Date();
+var FILTROS = {};  // estado de filtros por vista
+
+/* ---------- utilidades ---------- */
+function $(id){ return document.getElementById(id); }
+function s2(x){ return (x===null||x===undefined)?'':String(x); }
+function n2(x){ var v=Number(x); if(isNaN(v)) v=0; return 'S/ '+v.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fnum(x){ var v=Number(x); return isNaN(v)?0:v; }
+function hoyStr(){ var d=HOY,m=String(d.getMonth()+1),dia=String(d.getDate()); return d.getFullYear()+'-'+(m.length===1?'0'+m:m)+'-'+(dia.length===1?'0'+dia:dia); }
+function mesActual(){ return hoyStr().substring(0,7); }
+function esc(s){ return s2(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function toast(msg, ok){
+  var t=$('toast');
+  t.innerHTML = (ok===false?'<span class="ic">⚠</span>':'<span class="ic">✓</span>') + esc(msg);
+  t.className = 'show ' + (ok===false?'err':'ok');
+  clearTimeout(t._h);
+  t._h = setTimeout(function(){ t.className=''; }, 5500);
+}
+function setEstado(on, txt){
+  var sf=$('sideFoot');
+  sf.className = on?'on':'';
+  $('estadoTxt').textContent = txt;
+  $('apiState').textContent = on?'conectada':'—';
+}
+
+/* ---------- API ---------- */
+async function api(accion, extra){
+  var body = { accion:accion, pin:cfg.pin, usuario:cfg.usuario||'web' };
+  if (extra) for (var k in extra) body[k]=extra[k];
+  var r = await fetch(cfg.apiurl, { method:'POST', body:JSON.stringify(body) });
+  var j;
+  try { j = await r.json(); }
+  catch(e){ throw new Error('La API no respondió JSON. Revisa la URL (debe terminar en /exec) y que esté publicada como "Cualquier persona".'); }
+  return j;
+}
+async function accion(accion, extra, refrescar){
+  try {
+    var j = await api(accion, extra);
+    if (!j.ok){ toast(j.error||'Error desconocido', false); return null; }
+    toast(j.mensaje||'Listo.', true);
+    if (refrescar !== false) await cargarDatos();
+    return j;
+  } catch(e){ toast(e.message, false); return null; }
+}
+async function cargarDatos(){
+  try {
+    DATA = await api('datos');
+    if (!DATA.ok) throw new Error(DATA.error);
+    setEstado(true, 'conectado a Drive');
+    render();
+  } catch(e){
+    setEstado(false, 'sin conexión');
+    toast('No se pudo leer tu Drive: '+e.message, false);
+  }
+}
+async function guardarConexion(){
+  var url=$('cfgUrl').value.trim(), pin=$('cfgPin').value.trim();
+  var usuario=$('cfgUsuario').value.trim()||'web';
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(url)){
+    toast('La URL debe verse así: https://script.google.com/macros/s/.../exec', false); return;
+  }
+  if (!pin){ toast('Escribe el PIN (CONFIG celda C11).', false); return; }
+  var prev = { apiurl:cfg.apiurl, pin:cfg.pin, usuario:cfg.usuario };
+  cfg = { apiurl:url, pin:pin, usuario:usuario };
+  setEstado(false, 'probando…');
+  try {
+    var j = await api('ping');
+    if (!j.ok) throw new Error(j.error||'la API no respondió bien');
+    localStorage.setItem('natsuyari_cfg', JSON.stringify(cfg));
+    toast('Conexión OK · '+s2(j.version), true);
+    await cargarDatos();
+    mostrar('resumen');
+  } catch(e){ cfg=prev; toast('No conectó: '+e.message, false); }
+}
+
+/* ---------- navegación ---------- */
+var VISTAS = [
+  ['resumen',      '📊', 'Resumen',       'Panel general del negocio'],
+  ['ventas',       '🛒', 'Ventas',        'Ventas, cobranzas y libro de ventas'],
+  ['almacen',      '📦', 'Almacén',       'Kardex, stock y catálogo'],
+  ['produccion',   '🧵', 'Producción',    'Lotes y costos de fabricación'],
+  ['transporte',   '🚚', 'Transporte',    'Guías de remisión y fletes'],
+  ['rrhh',         '👥', 'RR.HH.',        'Personal, asistencia y planilla'],
+  ['caja',         '💰', 'Caja',          'Cierre de caja diario'],
+  ['contabilidad', '📒', 'Contabilidad',  'Libro diario · partida doble'],
+  ['config',       '⚙️', 'Configuración', 'Conexión, tarifas e IDs de los archivos']
+];
+function mostrar(v){
+  VISTA = v;
+  var par = VISTAS.find(function(x){ return x[0]===v; });
+  $('pageTitle').textContent = par[2];
+  $('pageCrumb').textContent = par[3];
+  // nav
+  var nav=$('nav'); nav.innerHTML='';
+  VISTAS.forEach(function(p){
+    var b=document.createElement('button');
+    b.className = p[0]===v?'act':'';
+    var badge = '';
+    if (p[0]==='almacen' && DATA){ var r=(DATA.productos||[]).concat(DATA.fibras||[]).filter(function(x){return s2(x[8])==='REPONER';}).length; if(r>0) badge='<span class="pill">'+r+'</span>'; }
+    if (p[0]==='ventas' && DATA){ var p2=(DATA.ventas||[]).filter(function(x){return s2(x[8])==='Crédito';}).length; if(p2>0) badge='<span class="pill">'+p2+'</span>'; }
+    b.innerHTML = '<span class="ico">'+p[1]+'</span><span>'+p[2]+'</span>'+badge;
+    b.onclick = function(){ mostrar(p[0]); if(window.innerWidth<=900) toggleSidebar(false); };
+    nav.appendChild(b);
+  });
+  document.querySelectorAll('main.content section').forEach(function(s){ s.classList.remove('act'); });
+  var sec=$('sec-'+v);
+  if (sec) sec.classList.add('act');
+  window.scrollTo(0,0);
+}
+function toggleSidebar(force){
+  var sb=$('sidebar'), ov=$('overlay');
+  if (force===false){ sb.classList.remove('open'); ov.classList.remove('show'); return; }
+  sb.classList.toggle('open'); ov.classList.toggle('show');
+}
+function abrirModal(id){ $(id).classList.add('show'); }
+function cerrarModal(id){ $(id).classList.remove('show'); }
+
+/* ================================================================
+   CÁLCULOS DEL RESUMEN
+   ================================================================ */
+function kpiData(){
+  var mes=mesActual(), anio=hoyStr().substring(0,4);
+  var vMes=0,vAnio=0,contadoMes=0,creditoMes=0,pendiente=0,cobrado=0;
+  var porProducto={}, porDia={};
+  (DATA.ventas||[]).forEach(function(v){
+    var fecha=s2(v[1]).substring(0,10), total=fnum(v[6]);
+    if (fecha.substring(0,4)===anio) vAnio+=total;
+    if (fecha.substring(0,7)===mes){
+      vMes+=total;
+      var cod=s2(v[2]); porProducto[cod]=(porProducto[cod]||0)+total;
+      var dia=Number(fecha.substring(8,10))||0; porDia[dia]=(porDia[dia]||0)+total;
+      if (s2(v[8])==='Contado') contadoMes+=total; else creditoMes+=total;
+    }
+    if (s2(v[8])==='Crédito') pendiente+=total;
+  });
+  (DATA.contabilidad||[]).forEach(function(a){ if (s2(a[2])==='121' && fnum(a[6])>0) cobrado+=fnum(a[6]); });
+  pendiente-=cobrado;
+  var saldoCaja=0; if (DATA.caja && DATA.caja.length) saldoCaja=fnum(DATA.caja[DATA.caja.length-1][4]);
+  var reponer=0;
+  (DATA.productos||[]).concat(DATA.fibras||[]).forEach(function(p){ if (s2(p[8])==='REPONER') reponer++; });
+  var lotesPlanta=(DATA.produccion||[]).filter(function(l){return s2(l[12])==='EN PLANTA';}).length;
+  var guiasRuta=(DATA.transporte||[]).filter(function(g){return s2(g[9])==='EN RUTA';}).length;
+  return { vMes:vMes, vAnio:vAnio, contadoMes:contadoMes, creditoMes:creditoMes, pendiente:pendiente,
+           saldoCaja:saldoCaja, reponer:reponer, porProducto:porProducto, porDia:porDia,
+           lotesPlanta:lotesPlanta, guiasRuta:guiasRuta };
+}
+
+/* ================================================================
+   RENDER PRINCIPAL
+   ================================================================ */
+function render(){
+  renderResumen();
+  renderVentas();
+  renderAlmacen();
+  renderProduccion();
+  renderTransporte();
+  renderRrhh();
+  renderCaja();
+  renderContab();
+  renderConfigExtra();
+  // refrescar badges del menú
+  mostrar(VISTA);
+}
+
+function renderResumen(){
+  var k=kpiData();
+  var meta=fnum(DATA.config.meta);
+  var pct=meta>0?Math.min(1,k.vAnio/meta):0;
+  var restante=Math.max(0,meta-k.vAnio);
+  $('kpis').innerHTML=[
+    {t:'Ventas del mes', v:n2(k.vMes), s:'mes '+mesActual(), cls:'', i:'🛒'},
+    {t:'Ventas del año', v:n2(k.vAnio), s:'avance '+Math.round(pct*100)+'%', cls:'gold', i:'📅'},
+    {t:'Meta mensual', v:n2(meta/12), s:'meta anual / 12', cls:'dark', i:'🎯'},
+    {t:'Saldo de caja', v:n2(k.saldoCaja), s:'último cierre', cls:k.saldoCaja>=0?'green':'red', i:'💰'},
+    {t:'Por cobrar', v:n2(k.pendiente), s:'créditos pendientes', cls:k.pendiente>0?'red':'green', i:'⏳'},
+    {t:'Por reponer', v:String(k.reponer), s:'productos bajo mín', cls:k.reponer>0?'red':'green', i:'⚠'},
+    {t:'Lotes en planta', v:String(k.lotesPlanta), s:'producción en curso', cls:'gold', i:'🧵'},
+    {t:'Guías en ruta', v:String(k.guiasRuta), s:'por entregar', cls:k.guiasRuta>0?'':'green', i:'🚚'}
+  ].map(function(x){
+    return '<div class="kpi '+x.cls+'"><div class="t">'+x.i+' '+x.t+'</div><div class="v">'+x.v+'</div><div class="s">'+x.s+'</div></div>';
+  }).join('');
+
+  $('metaBox').innerHTML='<div class="bar-wrap"><div class="bar-fill" style="width:'+Math.round(pct*100)+'%"></div></div>';
+  $('metaNota').innerHTML='<span>Avance: <b>'+Math.round(pct*100)+'%</b> ('+n2(k.vAnio)+')</span><span>Faltan: <b>'+n2(restante)+'</b></span>';
+
+  var prods=Object.keys(k.porProducto).map(function(c){ return {k:c, v:k.porProducto[c]}; });
+  prods.sort(function(a,b){ return b.v-a.v; });
+  $('gProducto').innerHTML=barChartSVG(prods.slice(0,8),'#B4552D','Ventas por producto');
+  $('gCanal').innerHTML=donutSVG([{k:'Contado',v:k.contadoMes},{k:'Crédito',v:k.creditoMes}],'Contado vs Crédito');
+  $('gDias').innerHTML=lineSVG(k.porDia,'Ventas por día del mes');
+
+  var alertas=[];
+  (DATA.productos||[]).forEach(function(p){ if(s2(p[8])==='REPONER') alertas.push(s2(p[0])+' · '+s2(p[1])+': '+fnum(p[6])+' (mín '+fnum(p[7])+')'); });
+  (DATA.fibras||[]).forEach(function(p){ if(s2(p[8])==='REPONER') alertas.push(s2(p[0])+' · '+s2(p[1])+': '+fnum(p[6])+' (mín '+fnum(p[7])+')'); });
+  $('alertaStockBox').innerHTML=alertas.length
+    ? '<div class="alerta err"><span class="ic">⚠</span><div><b>REPONER ('+alertas.length+'):</b><br>'+alertas.slice(0,8).join(' · ')+(alertas.length>8?' …':'')+'</div></div>'
+    : '<div class="alerta ok"><span class="ic">✓</span><div>Stock OK: ningún producto ni insumo bajo el mínimo.</div></div>';
+}
+
+/* ---- VENTAS ---- */
+function renderVentas(){
+  var sel=$('vCod');
+  sel.innerHTML=(DATA.productos||[]).map(function(p){
+    return '<option value="'+esc(p[0])+'">'+esc(p[0])+' — '+esc(p[1])+' · S/'+fnum(p[10]).toLocaleString('es-PE')+' · stock '+fnum(p[6])+'</option>';
+  }).join('');
+  $('vFecha').value=hoyStr();
+  previewVenta();
+
+  var pend=[], cobradas={};
+  (DATA.contabilidad||[]).forEach(function(a){ if(s2(a[2])==='121' && fnum(a[6])>0) cobradas[s2(a[8])]=true; });
+  (DATA.ventas||[]).forEach(function(v){ if(s2(v[8])==='Crédito' && !cobradas[s2(v[0])]) pend.push(v); });
+  $('cRef').innerHTML=pend.length
+    ? pend.map(function(v){ return '<option value="'+esc(v[0])+'">'+esc(v[0])+' · '+esc(v[9])+' · '+n2(v[6])+'</option>'; }).join('')
+    : '<option value="">(no hay créditos pendientes)</option>';
+  renderTVentas();
+}
+function renderTVentas(){
+  var q=($('fVentas').value||'').toLowerCase().trim();
+  var cond=($('fVentasCond').value||'');
+  var canal=($('fVentasCanal').value||'');
+  var filas=(DATA.ventas||[]).slice().reverse().filter(function(v){
+    if (cond && s2(v[8])!==cond) return false;
+    if (canal && s2(v[7])!==canal) return false;
+    if (q){
+      var blob=(s2(v[0])+' '+s2(v[2])+' '+s2(v[3])+' '+s2(v[9])+' '+s2(v[1])).toLowerCase();
+      if (blob.indexOf(q)<0) return false;
+    }
+    return true;
+  }).slice(0,150).map(function(v){
+    return '<tr><td><b>'+esc(v[0])+'</b></td><td>'+esc(v[1])+'</td><td>'+esc(v[2])+'</td><td>'+esc(v[3])+'</td>'
+      +'<td class="num">'+fnum(v[4])+'</td><td class="num">'+n2(v[5])+'</td><td class="num"><b>'+n2(v[6])+'</b></td>'
+      +'<td>'+esc(v[7])+'</td><td><span class="tag '+(s2(v[8])==='Contado'?'ok':'bad')+'">'+esc(v[8])+'</span></td><td>'+esc(v[9])+'</td></tr>';
+  }).join('');
+  $('tVentas').innerHTML=filas
+    ? '<table class="tabla"><tr><th>N°</th><th>Fecha</th><th>Cód</th><th>Prenda</th><th class="num">Cant</th><th class="num">P.Unit</th><th class="num">Total</th><th>Canal</th><th>Cond</th><th>Cliente</th></tr>'+filas+'</table>'
+    : '<div class="empty"><span class="ic">📭</span>Aún no hay ventas que coincidan.</div>';
+}
+function previewVenta(){
+  var cod=$('vCod').value, cant=fnum($('vCant').value);
+  var p=(DATA.productos||[]).find(function(x){ return s2(x[0])===cod; });
+  if (!p) return;
+  var precio=fnum(p[10]);
+  $('vPreview').innerHTML='<b>'+esc(p[1])+'</b> · stock disponible <b>'+fnum(p[6])+'</b> · Total: <b>'+n2(precio*cant)+'</b>'
+    +($('vCond').value==='Crédito'?' · <span style="color:var(--red)">se cobra después (CxC)</span>':' · entra a Caja ahora');
+}
+
+/* ---- ALMACEN ---- */
+function renderAlmacen(){
+  var todos=(DATA.productos||[]).map(function(p){
+    return [s2(p[0]),s2(p[1]),s2(p[2]),fnum(p[6]),fnum(p[7]),fnum(p[9]),fnum(p[10]),s2(p[8])];
+  }).concat((DATA.fibras||[]).map(function(p){
+    return [s2(p[0]),s2(p[1]),s2(p[2]),fnum(p[6]),fnum(p[7]),fnum(p[9]),null,s2(p[8])];
+  }));
+  $('kCod').innerHTML=todos.map(function(p){
+    return '<option value="'+esc(p[0])+'">'+esc(p[0])+' — '+esc(p[1])+' (stock '+p[3]+' '+p[2]+')</option>';
+  }).join('');
+  renderTStock();
+  var filas=(DATA.kardex||[]).slice(-150).reverse().map(function(k){
+    return '<tr><td><b>'+esc(k[0])+'</b></td><td>'+esc(k[1])+'</td><td><span class="tag '+(s2(k[2])==='ENTRADA'?'ok':'bad')+'">'+esc(k[2])+'</span></td>'
+      +'<td>'+esc(k[3])+'</td><td>'+esc(k[4])+'</td><td class="num">'+fnum(k[5])+'</td><td>'+esc(k[6])+'</td><td>'+esc(k[7])+'</td></tr>';
+  }).join('');
+  $('tKardex').innerHTML=filas
+    ? '<table class="tabla"><tr><th>N°</th><th>Fecha</th><th>Tipo</th><th>Cód</th><th>Producto</th><th class="num">Cant</th><th>Doc</th><th>Obs</th></tr>'+filas+'</table>'
+    : '<div class="empty"><span class="ic">📭</span>KARDEX vacío.</div>';
+}
+function renderTStock(){
+  var q=($('fStock').value||'').toLowerCase().trim();
+  var todos=(DATA.productos||[]).map(function(p){
+    return [s2(p[0]),s2(p[1]),s2(p[2]),fnum(p[6]),fnum(p[7]),fnum(p[9]),fnum(p[10]),s2(p[8])];
+  }).concat((DATA.fibras||[]).map(function(p){
+    return [s2(p[0]),s2(p[1]),s2(p[2]),fnum(p[6]),fnum(p[7]),fnum(p[9]),null,s2(p[8])];
+  }));
+  if (q) todos=todos.filter(function(p){ return (p[0]+' '+p[1]).toLowerCase().indexOf(q)>=0; });
+  $('tStock').innerHTML='<table class="tabla"><tr><th>Código</th><th>Nombre</th><th>Und</th><th class="num">Stock</th><th class="num">Mín</th><th class="num">Costo</th><th class="num">Precio</th><th>Estado</th></tr>'
+    +todos.map(function(p){
+      return '<tr><td><b>'+esc(p[0])+'</b></td><td>'+esc(p[1])+'</td><td>'+esc(p[2])+'</td><td class="num">'+p[3]+'</td><td class="num">'+p[4]+'</td>'
+        +'<td class="num">'+n2(p[5])+'</td><td class="num">'+(p[6]===null?'—':n2(p[6]))+'</td>'
+        +'<td><span class="tag '+(p[7]==='OK'?'ok':'bad')+'">'+esc(p[7])+'</span></td></tr>';
+    }).join('')+'</table>';
+}
+
+/* ---- PRODUCCION ---- */
+function renderProduccion(){
+  $('pCod').innerHTML=(DATA.productos||[]).map(function(p){
+    return '<option value="'+esc(p[0])+'">'+esc(p[0])+' — '+esc(p[1])+'</option>';
+  }).join('');
+  var enPlanta=(DATA.produccion||[]).filter(function(l){ return s2(l[12])==='EN PLANTA'; });
+  $('pLote').innerHTML=enPlanta.length
+    ? enPlanta.map(function(l){ return '<option value="'+esc(l[0])+'">'+esc(l[0])+' · '+esc(l[2])+' x'+fnum(l[10])+' (unit S/'+fnum(l[11]).toFixed(2)+')</option>'; }).join('')
+    : '<option value="">(no hay lotes EN PLANTA)</option>';
+  $('tProduccion').innerHTML=(DATA.produccion||[]).length
+    ? '<table class="tabla"><tr><th>Lote</th><th>Fecha</th><th>Prenda</th><th class="num">Fibra</th><th class="num">Hilo</th><th class="num">Horas</th><th class="num">Costo total</th><th class="num">Prendas</th><th class="num">Unit</th><th>Estado</th></tr>'
+      +(DATA.produccion||[]).slice(-80).reverse().map(function(l){
+        return '<tr><td><b>'+esc(l[0])+'</b></td><td>'+esc(l[1])+'</td><td>'+esc(l[2])+'</td><td class="num">'+fnum(l[3])+'</td><td class="num">'+fnum(l[4])+'</td><td class="num">'+fnum(l[5])+'</td>'
+          +'<td class="num">'+n2(l[9])+'</td><td class="num">'+fnum(l[10])+'</td><td class="num">'+n2(l[11])+'</td>'
+          +'<td><span class="tag '+(s2(l[12])==='EN ALMACEN'?'ok':'ruta')+'">'+esc(l[12])+'</span></td></tr>';
+      }).join('')+'</table>'
+    : '<div class="empty"><span class="ic">🧵</span>Aún no hay lotes.</div>';
+}
+
+/* ---- TRANSPORTE ---- */
+function renderTransporte(){
+  var dests=DATA.fletes||[];
+  $('tDest').innerHTML=dests.map(function(f){
+    return '<option value="'+esc(f.destino)+'">'+esc(f.destino)+' (base S/'+fnum(f.base).toLocaleString('es-PE')+' + S/'+fnum(f.sKg)+'/kg extra sobre '+fnum(f.kgBase)+' kg)</option>';
+  }).join('');
+  $('tFecha').value=hoyStr();
+  var enRuta=(DATA.transporte||[]).filter(function(g){ return s2(g[9])==='EN RUTA'; });
+  $('tGuia').innerHTML=enRuta.length
+    ? enRuta.map(function(g){ return '<option value="'+esc(g[0])+'">'+esc(g[0])+' · '+esc(g[3])+' · '+fnum(g[4])+' kg · '+n2(g[8])+'</option>'; }).join('')
+    : '<option value="">(no hay guías EN RUTA)</option>';
+  $('tTransporte').innerHTML=(DATA.transporte||[]).length
+    ? '<table class="tabla"><tr><th>Guía</th><th>Fecha</th><th>Destino</th><th class="num">Peso</th><th class="num">Base</th><th class="num">Peajes</th><th class="num">Kg extra</th><th class="num">Flete</th><th>Estado</th><th>Entrega</th></tr>'
+      +(DATA.transporte||[]).slice(-80).reverse().map(function(g){
+        return '<tr><td><b>'+esc(g[0])+'</b></td><td>'+esc(g[1])+'</td><td>'+esc(g[3])+'</td><td class="num">'+fnum(g[4])+'</td><td class="num">'+n2(g[5])+'</td><td class="num">'+n2(g[6])+'</td>'
+          +'<td class="num">'+fnum(g[7])+'</td><td class="num"><b>'+n2(g[8])+'</b></td>'
+          +'<td><span class="tag '+(s2(g[9])==='ENTREGADO'?'ok':'ruta')+'">'+esc(g[9])+'</span></td><td>'+esc(g[10]||'')+'</td></tr>';
+      }).join('')+'</table>'
+    : '<div class="empty"><span class="ic">🚚</span>Aún no hay guías.</div>';
+  previewFlete();
+}
+function previewFlete(){
+  var dest=$('tDest').value, peso=fnum($('tPeso').value);
+  if (!dest || !(peso>0)){ $('fletePreview').textContent='Elige destino y peso.'; return; }
+  var t=(DATA.fletes||[]).find(function(f){ return s2(f.destino)===dest; });
+  if (!t) return;
+  var kgExtra=Math.max(0,peso-t.kgBase);
+  var flete=t.base+t.peajes+kgExtra*t.sKg;
+  $('fletePreview').innerHTML='Flete estimado: <b>'+n2(flete)+'</b> · base '+n2(t.base)+' + peajes '+n2(t.peajes)+' + '+kgExtra+' kg extra × '+n2(t.sKg);
+}
+
+/* ---- RRHH ---- */
+function renderRrhh(){
+  var emps=DATA.rrhh||[];
+  $('tRrhh').innerHTML=emps.length
+    ? '<table class="tabla"><tr><th>Código</th><th>Nombre</th><th>Cargo</th><th>Área</th><th class="num">Sueldo</th><th>Ingreso</th><th>Estado</th></tr>'
+      +emps.map(function(e){
+        return '<tr><td><b>'+esc(e[0])+'</b></td><td>'+esc(e[1])+'</td><td>'+esc(e[3])+'</td><td>'+esc(e[4])+'</td><td class="num">'+n2(e[5])+'</td><td>'+esc(e[6])+'</td>'
+          +'<td><span class="tag '+(s2(e[7])==='ACTIVO'?'ok':'bad')+'">'+esc(e[7])+'</span></td></tr>';
+      }).join('')+'</table>'
+    : '<div class="empty"><span class="ic">👥</span>Sin personal registrado.</div>';
+  var activos=emps.filter(function(e){ return s2(e[7])==='ACTIVO'; });
+  $('eSel').innerHTML=activos.map(function(e){ return '<option value="'+esc(e[0])+'">'+esc(e[0])+' — '+esc(e[1])+'</option>'; }).join('');
+  $('aCod').innerHTML=activos.map(function(e){ return '<option value="'+esc(e[0])+'">'+esc(e[0])+' — '+esc(e[1])+'</option>'; }).join('');
+  if (!$('aMes').value) $('aMes').value=mesActual();
+  if (!$('plMes').value) $('plMes').value=mesActual();
+  var plan=DATA.planilla||[];
+  $('tPlanilla').innerHTML=plan.length
+    ? '<table class="tabla"><tr><th>Mes</th><th>Código</th><th>Nombre</th><th class="num">Sueldo</th><th class="num">Desc. faltas</th><th class="num">AFP</th><th class="num">Neto</th></tr>'
+      +plan.slice(-50).reverse().map(function(p){
+        return '<tr><td>'+esc(p[0])+'</td><td>'+esc(p[1])+'</td><td>'+esc(p[2])+'</td><td class="num">'+n2(p[3])+'</td><td class="num">'+n2(p[4])+'</td><td class="num">'+n2(p[5])+'</td><td class="num"><b>'+n2(p[6])+'</b></td></tr>';
+      }).join('')+'</table>'
+    : '<div class="empty"><span class="ic">💰</span>Planilla vacía. Registra asistencia y pulsa Calcular planilla.</div>';
+}
+
+/* ---- CAJA ---- */
+function renderCaja(){
+  $('tCaja').innerHTML=(DATA.caja||[]).length
+    ? '<table class="tabla"><tr><th>Fecha</th><th class="num">Ing. contado</th><th class="num">Cobranzas</th><th class="num">Egresos</th><th class="num">Saldo</th><th>Obs</th></tr>'
+      +(DATA.caja||[]).slice(-80).reverse().map(function(c){
+        return '<tr><td>'+esc(c[0])+'</td><td class="num">'+n2(c[1])+'</td><td class="num">'+n2(c[2])+'</td><td class="num">'+n2(c[3])+'</td><td class="num"><b>'+n2(c[4])+'</b></td><td>'+esc(c[5])+'</td></tr>';
+      }).join('')+'</table>'
+    : '<div class="empty"><span class="ic">💰</span>Aún no hay cierres de caja.</div>';
+}
+
+/* ---- CONTABILIDAD ---- */
+function renderContab(){ renderTContab(); }
+function renderTContab(){
+  var q=($('fContab').value||'').toLowerCase().trim();
+  var todos=(DATA.contabilidad||[]).slice().reverse();
+  if (q) todos=todos.filter(function(a){
+    return (s2(a[0])+' '+s2(a[2])+' '+s2(a[3])+' '+s2(a[4])+' '+s2(a[8])).toLowerCase().indexOf(q)>=0;
+  });
+  var filas=todos.slice(0,200).map(function(a){
+    return '<tr><td><b>'+esc(a[0])+'</b></td><td>'+esc(a[1])+'</td><td>'+esc(a[2])+'</td><td>'+esc(a[3])+'</td><td>'+esc(a[4])+'</td>'
+      +'<td class="num">'+(fnum(a[5])?n2(a[5]):'')+'</td><td class="num">'+(fnum(a[6])?n2(a[6]):'')+'</td>'
+      +'<td><span class="tag '+(s2(a[7])==='Contado'?'ok':'bad')+'">'+esc(a[7])+'</span></td><td>'+esc(a[8])+'</td></tr>';
+  }).join('');
+  $('tContab').innerHTML=filas
+    ? '<table class="tabla"><tr><th>Asiento</th><th>Fecha</th><th>Cta</th><th>Nombre</th><th>Glosa</th><th class="num">Debe</th><th class="num">Haber</th><th>Cond</th><th>Ref</th></tr>'+filas+'</table>'
+    : '<div class="empty"><span class="ic">📒</span>Libro vacío.</div>';
+}
+
+/* ---- CONFIG extra ---- */
+function renderConfigExtra(){
+  if (!DATA) return;
+  var c=DATA.config;
+  $('cfgMetaNota').innerHTML='Meta actual: <b>'+n2(c.meta)+'</b> · equivale a <b>'+n2(c.meta/12)+'</b> por mes.';
+  $('cfgTarifas').innerHTML=[
+    ['Fibra (kg)', n2(c.fibra)], ['Hilo (kg)', n2(c.hilo)], ['Mano de obra (hora)', n2(c.manoObra)],
+    ['AFP', Math.round(fnum(c.afp)*100)+'%']
+  ].concat((DATA.fletes||[]).map(function(f){
+    return [f.destino, 'S/'+fnum(f.base).toLocaleString('es-PE')+' + peajes S/'+fnum(f.peajes)];
+  })).map(function(x){ return '<span class="chip"><b>'+esc(x[0])+':</b> '+esc(x[1])+'</span>'; }).join('');
+  $('cfgInfo').innerHTML='Versión API: <b>'+esc(DATA.version)+'</b> · datos del Drive · <b>'+esc(DATA.hoy||'')+'</b>';
+  var filas=(DATA.bitacora||[]).slice(-60).reverse().map(function(b){
+    return '<tr><td>'+esc(b[0])+'</td><td>'+esc(b[1])+'</td><td>'+esc(b[2])+'</td><td>'+esc(b[3])+'</td><td>'+esc(b[4])+'</td></tr>';
+  }).join('');
+  $('tBitacora').innerHTML=filas
+    ? '<table class="tabla"><tr><th>Fecha</th><th>Hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr>'+filas+'</table>'
+    : '<div class="empty"><span class="ic">📝</span>Bitácora vacía.</div>';
+}
+
+/* ================================================================
+   ACCIONES
+   ================================================================ */
+async function hacerVenta(){
+  var cod=$('vCod').value, cant=fnum($('vCant').value);
+  if (!cod || cant<=0){ toast('Elige prenda y cantidad válidas.', false); return; }
+  var r=await accion('venta',{codigo:cod,cantidad:cant,canal:$('vCanal').value,condicion:$('vCond').value,cliente:$('vCliente').value,fecha:$('vFecha').value});
+  if (r){ $('vCant').value=1; $('vCliente').value='Mostrador'; previewVenta(); }
+}
+async function hacerVentaRapida(){
+  var cod=$('mVCod').value, cant=fnum($('mVCant').value);
+  if (!cod || cant<=0){ toast('Elige prenda y cantidad.', false); return; }
+  var r=await accion('venta',{codigo:cod,cantidad:cant,canal:$('mVCanal').value,condicion:$('mVCond').value,cliente:$('mVCliente').value,fecha:$('mVFecha').value});
+  if (r){ cerrarModal('modalVenta'); }
+}
+function previewMVenta(){
+  var cod=$('mVCod').value, cant=fnum($('mVCant').value);
+  var p=(DATA.productos||[]).find(function(x){ return s2(x[0])===cod; });
+  if (!p){ $('mVPreview').textContent='Selecciona prenda y cantidad.'; return; }
+  var precio=fnum(p[10]);
+  $('mVPreview').innerHTML='<b>'+esc(p[1])+'</b> · stock '+fnum(p[6])+' · Total: <b>'+n2(precio*cant)+'</b>'
+    +($('mVCond').value==='Crédito'?' · <span style="color:var(--red)">a crédito (CxC)</span>':'');
+}
+async function hacerCobranza(){
+  var ref=$('cRef').value;
+  if (!ref){ toast('No hay ventas al crédito pendientes.', false); return; }
+  await accion('cobranza',{ref:ref});
+}
+async function hacerKardex(tipo){
+  var cod=$('kCod').value, cant=fnum($('kCant').value);
+  if (!cod || cant<=0){ toast('Elige código y cantidad.', false); return; }
+  await accion('kardex',{tipo:tipo,codigo:cod,cantidad:cant,doc:$('kDoc').value,obs:$('kObs').value});
+}
+async function hacerLote(){
+  var cod=$('pCod').value; if (!cod) return;
+  await accion('lote',{codigo:cod,fibra:fnum($('pFibra').value),hilo:fnum($('pHilo').value),horas:fnum($('pHoras').value),prendas:fnum($('pPrendas').value)});
+}
+async function hacerLoteAlmacen(){
+  var lote=$('pLote').value;
+  if (!lote){ toast('No hay lotes EN PLANTA.', false); return; }
+  await accion('lote_almacen',{lote:lote});
+}
+async function calcFlete(){
+  var dest=$('tDest').value, peso=fnum($('tPeso').value);
+  if (!dest || !(peso>0)){ toast('Elige destino y peso.', false); return; }
+  try {
+    var r=await api('flete',{destino:dest,peso:peso});
+    if (!r.ok){ toast(r.error,false); return; }
+    $('fletePreview').innerHTML='Flete estimado: <b>'+n2(r.flete)+'</b> · base '+n2(r.base)+' + peajes '+n2(r.peajes)+' + '+r.kgExtra+' kg extra';
+  } catch(e){ toast(e.message,false); }
+}
+async function hacerGuia(){
+  var dest=$('tDest').value, peso=fnum($('tPeso').value);
+  if (!dest || !(peso>0)){ toast('Elige destino y peso.', false); return; }
+  await accion('guia',{destino:dest,peso:peso,fecha:$('tFecha').value||hoyStr()});
+}
+async function hacerEntregada(){
+  var g=$('tGuia').value;
+  if (!g){ toast('No hay guías EN RUTA.', false); return; }
+  await accion('guia_entregada',{guia:g});
+}
+async function hacerAlta(){
+  var nombre=$('eNombre').value.trim();
+  if (!nombre){ toast('Escribe el nombre.', false); return; }
+  var r=await accion('empleado_alta',{nombre:nombre,dni:$('eDni').value,cargo:$('eCargo').value,area:$('eArea').value,sueldo:fnum($('eSueldo').value)});
+  if (r){ $('eNombre').value=''; $('eDni').value=''; $('eCargo').value=''; }
+}
+async function hacerBaja(){
+  var cod=$('eSel').value;
+  if (!cod){ toast('No hay empleados activos.', false); return; }
+  if (!confirm('¿Dar de baja a '+cod+'? Queda INACTIVO.')) return;
+  await accion('empleado_baja',{codigo:cod});
+}
+async function hacerEditar(){
+  var cod=$('eSel').value;
+  if (!cod){ toast('No hay empleados activos.', false); return; }
+  var extra={codigo:cod};
+  if ($('eCargoN').value.trim()) extra.cargo=$('eCargoN').value.trim();
+  if (fnum($('eSueldoN').value)>0) extra.sueldo=fnum($('eSueldoN').value);
+  await accion('empleado_editar',extra);
+  $('eCargoN').value=''; $('eSueldoN').value='';
+}
+async function hacerAsistencia(){
+  var mes=$('aMes').value, cod=$('aCod').value;
+  if (!mes || !cod){ toast('Elige mes y empleado.', false); return; }
+  await accion('asistencia',{mes:mes,codigo:cod,dias:fnum($('aDias').value),faltas:fnum($('aFaltas').value),tardanzas:fnum($('aTard').value),hExtra:fnum($('aHEx').value)});
+}
+async function hacerPlanilla(){
+  var mes=$('plMes').value;
+  if (!mes){ toast('Elige el mes.', false); return; }
+  await accion('planilla',{mes:mes});
+}
+async function hacerCierre(){ await accion('cierre',{egresos:fnum($('cEgre').value)}); }
+async function hacerMeta(){
+  var m=fnum($('cfgMeta').value);
+  if (!(m>0)){ toast('Escribe una meta válida.', false); return; }
+  await accion('meta',{meta:m});
+}
+async function hacerProductoNuevo(){
+  var cod=$('nPCod').value.trim().toUpperCase(), nom=$('nPNom').value.trim();
+  if (!cod || !nom){ toast('Código y nombre son obligatorios.', false); return; }
+  var r=await accion('producto_agregar',{codigo:cod,nombre:nom,unidad:$('nPUnd').value,stockInicial:fnum($('nPIni').value),stockMinimo:fnum($('nPMin').value),costo:fnum($('nPCosto').value),precio:fnum($('nPPrecio').value)});
+  if (r){ cerrarModal('modalProd'); $('nPCod').value=''; $('nPNom').value=''; $('nPPrecio').value='0'; $('nPCosto').value='0'; }
+}
+async function recargar(){ await cargarDatos(); }
+
+/* ================================================================
+   GRÁFICOS SVG
+   ================================================================ */
+function barChartSVG(items, color, titulo){
+  if (!items.length) return '<div class="empty"><span class="ic">📉</span>'+esc(titulo)+': sin datos este mes.</div>';
+  var max=0; items.forEach(function(it){ if(it.v>max) max=it.v; });
+  var w=400, lh=26, h=items.length*lh+30;
+  var s='<svg width="'+w+'" height="'+h+'" xmlns="http://www.w3.org/2000/svg">';
+  s+='<text x="0" y="16" font-size="12" fill="#7A6E5F" font-weight="700">'+esc(titulo)+'</text>';
+  items.forEach(function(it,i){
+    var y=28+i*lh, bw=max>0?Math.round(it.v/max*(w-170)):0;
+    s+='<text x="0" y="'+(y+13)+'" font-size="11" fill="#2A2622">'+esc(it.k)+'</text>';
+    s+='<rect x="80" y="'+y+'" width="'+Math.max(bw,2)+'" height="16" rx="4" fill="'+color+'"/>';
+    s+='<text x="'+(84+Math.max(bw,2))+'" y="'+(y+13)+'" font-size="11" fill="#7A6E5F">S/ '+it.v.toLocaleString('es-PE')+'</text>';
+  });
+  return s+'</svg>';
+}
+function donutSVG(par, titulo){
+  var total=par[0].v+par[1].v, w=400, h=190, cx=90, cy=100, r=62;
+  var s='<svg width="'+w+'" height="'+h+'" xmlns="http://www.w3.org/2000/svg">';
+  s+='<text x="0" y="16" font-size="12" fill="#7A6E5F" font-weight="700">'+esc(titulo)+'</text>';
+  if (total<=0){
+    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#E5DCCF" stroke-width="26"/>';
+    s+='<text x="'+cx+'" y="'+(cy+4)+'" text-anchor="middle" font-size="13" fill="#7A6E5F">sin ventas</text>';
+  } else {
+    var a0=-Math.PI/2, a1=a0+par[0].v/total*Math.PI*2;
+    var x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0);
+    var x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+    var grande=(par[0].v/total)>0.5?1:0;
+    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#E8D9C4" stroke-width="26"/>';
+    s+='<path d="M '+x0+' '+y0+' A '+r+' '+r+' 0 '+grande+' 1 '+x1+' '+y1+'" fill="none" stroke="#B4552D" stroke-width="26"/>';
+    s+='<text x="'+cx+'" y="'+(cy-2)+'" text-anchor="middle" font-size="20" font-weight="800" fill="#2A2622">'+Math.round(par[0].v/total*100)+'%</text>';
+    s+='<text x="'+cx+'" y="'+(cy+14)+'" text-anchor="middle" font-size="10" fill="#7A6E5F">contado</text>';
+  }
+  s+='<rect x="195" y="70" width="13" height="13" rx="3" fill="#B4552D"/><text x="214" y="81" font-size="12" fill="#2A2622">'+esc(par[0].k)+' · S/ '+par[0].v.toLocaleString('es-PE')+'</text>';
+  s+='<rect x="195" y="98" width="13" height="13" rx="3" fill="#E8D9C4"/><text x="214" y="109" font-size="12" fill="#2A2622">'+esc(par[1].k)+' · S/ '+par[1].v.toLocaleString('es-PE')+'</text>';
+  return s+'</svg>';
+}
+function lineSVG(porDia, titulo){
+  var dias=Object.keys(porDia).map(Number).sort(function(a,b){return a-b;});
+  var w=900, h=160;
+  if (!dias.length) return '<div class="empty"><span class="ic">📈</span>'+esc(titulo)+': sin datos este mes.</div>';
+  var max=0; dias.forEach(function(d){ if(porDia[d]>max) max=porDia[d]; });
+  var s='<svg width="'+w+'" height="'+h+'" xmlns="http://www.w3.org/2000/svg">';
+  s+='<text x="0" y="16" font-size="12" fill="#7A6E5F" font-weight="700">'+esc(titulo)+'</text>';
+  for (var g=1; g<=3; g++){
+    var gy=30+g*30;
+    s+='<line x1="10" y1="'+gy+'" x2="'+(w-10)+'" y2="'+gy+'" stroke="#EFE7DA" stroke-width="1"/>';
+  }
+  var paso=Math.max(w/31,4), puntos='';
+  for (var d=1; d<=31; d++){
+    var x=10+(d-1)*paso, v=porDia[d]||0;
+    var y=130-(max>0?v/max*90:0);
+    puntos += (puntos?' L ':'M ')+x+' '+y;
+    if (v>0){ s+='<circle cx="'+x+'" cy="'+y+'" r="3.5" fill="#B4552D"/>'; s+='<title>Día '+d+': S/ '+v.toLocaleString('es-PE')+'</title>'; }
+    if (d%5===0||d===1) s+='<text x="'+x+'" y="148" font-size="9" fill="#7A6E5F" text-anchor="middle">'+d+'</text>';
+  }
+  s+='<path d="'+puntos+'" fill="none" stroke="#B4552D" stroke-width="2.5"/>';
+  return s+'</svg>';
+}
+
+/* ================================================================
+   ARRANQUE
+   ================================================================ */
+function boot(){
+  HOY=new Date();
+  $('mVFecha').value=hoyStr();
+  if (cfg.apiurl){
+    setEstado(false,'cargando…');
+    mostrar('resumen');
+    cargarDatos().then(function(){
+      // llenar selects del modal de venta rápida cuando lleguen los datos
+      $('mVCod').innerHTML=(DATA.productos||[]).map(function(p){
+        return '<option value="'+esc(p[0])+'">'+esc(p[0])+' — '+esc(p[1])+' · S/'+fnum(p[10]).toLocaleString('es-PE')+'</option>';
+      }).join('');
+      previewMVenta();
+      $('mVCod').onchange=previewMVenta;
+      $('mVCant').oninput=previewMVenta;
+      $('mVCond').onchange=previewMVenta;
+    });
+  } else {
+    setEstado(false,'sin configurar');
+    mostrar('config');
+    toast('Primero conecta tu Drive: pestaña Configuración.', true);
+  }
+}
+boot();
+</script>
+</body>
+</html>
