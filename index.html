@@ -26,9 +26,23 @@ body{font-family:var(--font);background:var(--cream);color:var(--dark);font-size
 button{font-family:inherit}
 
 /* ====== LAYOUT ====== */
-.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
-.sidebar{background:var(--dark);color:#fff;padding:0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;box-shadow:var(--shadow-md);z-index:30}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;transition:grid-template-columns .25s ease}
+.app.collapsed{grid-template-columns:0 1fr}
+.sidebar{background:var(--dark);color:#fff;padding:0;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;box-shadow:var(--shadow-md);z-index:30;overflow:hidden;transition:width .25s ease,opacity .2s}
+.app.collapsed .sidebar{opacity:0;pointer-events:none}
 .main{display:flex;flex-direction:column;min-width:0}
+
+/* botón de colapsar el sidebar (escritorio) */
+.toggle-side{display:none;background:var(--cream);border:1px solid var(--line);color:var(--dark);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;transition:.15s;flex-shrink:0;padding:0}
+.toggle-side:hover{background:var(--line)}
+.app:not(.collapsed) .toggle-side{display:inline-block}
+.app:not(.collapsed) .toggle-side .ic-rot{display:inline-block;transition:.25s}
+.app.collapsed .toggle-side{display:inline-block}
+.app.collapsed .toggle-side .ic-rot{display:inline-block;transform:rotate(180deg)}
+
+/* overlay para móvil (cubrir el fondo cuando el sidebar está abierto) */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40;display:none}
+.overlay.show{display:block}
 
 /* ====== SIDEBAR ====== */
 .brand{padding:22px 18px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
@@ -193,15 +207,15 @@ input[type="date"],input[type="month"]{color:var(--dark)}
 
 /* ====== RESPONSIVE ====== */
 @media (max-width:900px){
-  .app{grid-template-columns:1fr}
-  .sidebar{position:fixed;left:-260px;top:0;width:240px;transition:left .25s;z-index:50}
+  .app,.app.collapsed{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:-260px;top:0;width:240px;transition:left .25s;z-index:50;opacity:1;pointer-events:auto}
   .sidebar.open{left:0}
+  .app.collapsed .sidebar{opacity:1;pointer-events:auto}
   .hamb{display:inline-block}
+  .toggle-side{display:none!important}
   .content{padding:16px}
   .topbar{padding:12px 16px}
   .topbar h1{font-size:16px}
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40;display:none}
-  .overlay.show{display:block}
 }
 @media (max-width:560px){
   .kpis{grid-template-columns:1fr 1fr}
@@ -213,7 +227,8 @@ input[type="date"],input[type="month"]{color:var(--dark)}
 </style>
 </head>
 <body>
-<div class="app">
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+<div class="app" id="app">
 
   <!-- ====== SIDEBAR ====== -->
   <aside class="sidebar" id="sidebar">
@@ -229,12 +244,12 @@ input[type="date"],input[type="month"]{color:var(--dark)}
       <div>API: <span id="apiState">—</span></div>
     </div>
   </aside>
-  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
   <!-- ====== MAIN ====== -->
   <div class="main">
     <header class="topbar">
       <button class="hamb" onclick="toggleSidebar()">☰</button>
+      <button class="toggle-side" id="toggleSide" onclick="toggleSidebarCollapse()" title="Mostrar/ocultar menú"><span class="ic-rot">◀</span></button>
       <div>
         <h1 id="pageTitle">Resumen</h1>
         <div class="crumb" id="pageCrumb">Panel general del negocio</div>
@@ -717,6 +732,12 @@ function toggleSidebar(force){
   if (force===false){ sb.classList.remove('open'); ov.classList.remove('show'); return; }
   sb.classList.toggle('open'); ov.classList.toggle('show');
 }
+// Colapsar/expandir el sidebar en escritorio (botón ◀)
+function toggleSidebarCollapse(){
+  $('app').classList.toggle('collapsed');
+  // recordar la preferencia
+  try { localStorage.setItem('natsuyari_sidebar', $('app').classList.contains('collapsed')?'1':'0'); } catch(e){}
+}
 function abrirModal(id){ $(id).classList.add('show'); }
 function cerrarModal(id){ $(id).classList.remove('show'); }
 
@@ -1179,6 +1200,8 @@ function lineSVG(porDia, titulo){
 function boot(){
   HOY=new Date();
   $('mVFecha').value=hoyStr();
+  // restaurar preferencia del sidebar (colapsado o no) en escritorio
+  try { if (localStorage.getItem('natsuyari_sidebar')==='1' && window.innerWidth>900) $('app').classList.add('collapsed'); } catch(e){}
   if (cfg.apiurl){
     setEstado(false,'cargando…');
     mostrar('resumen');
